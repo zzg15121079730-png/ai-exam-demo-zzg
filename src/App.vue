@@ -2,6 +2,8 @@
 import { ref, onMounted, reactive, h } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Plus, Edit, Delete, Refresh, Download, Upload } from '@element-plus/icons-vue'
+// 引入 API 模块
+import * as todoApi from './api/todo'
 
 // --- 数据定义 ---
 const tableData = ref([])
@@ -27,12 +29,14 @@ const importing = ref(false)
 async function fetchList() {
   loading.value = true
   try {
-    const res = await fetch(`/api/todo/list?page=${currentPage.value}&pageSize=${pageSize.value}`)
-    const data = await res.json()
+    const data = await todoApi.getTodoList({
+      page: currentPage.value,
+      pageSize: pageSize.value
+    })
     tableData.value = data.list || []
     total.value = data.total || 0
   } catch (error) {
-    ElMessage.error('获取列表失败')
+    ElMessage.error(error.message || '获取列表失败')
   } finally {
     loading.value = false
   }
@@ -44,23 +48,22 @@ async function handleSave() {
     return ElMessage.warning('请输入标题')
   }
 
-  const url = isEdit.value ? '/api/todo/update' : '/api/todo/add'
-  const payload = isEdit.value ? { id: form.id, title: form.title, completed: form.completed } : { title: form.title }
-
   try {
-    const res = await fetch(url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload)
-    })
-
-    if (res.ok) {
-      ElMessage.success(isEdit.value ? '修改成功' : '添加成功')
-      dialogVisible.value = false
-      fetchList()
+    const payload = isEdit.value 
+      ? { id: form.id, title: form.title, completed: form.completed } 
+      : { title: form.title }
+    
+    if (isEdit.value) {
+      await todoApi.updateTodo(payload)
+    } else {
+      await todoApi.addTodo(payload)
     }
+
+    ElMessage.success(isEdit.value ? '修改成功' : '添加成功')
+    dialogVisible.value = false
+    fetchList()
   } catch (error) {
-    ElMessage.error('操作失败')
+    ElMessage.error(error.message || '操作失败')
   }
 }
 
@@ -68,18 +71,12 @@ async function handleSave() {
 async function handleDelete(id) {
   try {
     await ElMessageBox.confirm('确定要删除这项内容吗？', '确认删除', { type: 'warning' })
-    const res = await fetch('/api/todo/delete', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ id })
-    })
-    if (res.ok) {
-      ElMessage.success('删除成功')
-      fetchList()
-    }
+    await todoApi.deleteTodo(id)
+    ElMessage.success('删除成功')
+    fetchList()
   } catch (error) {
     if (error !== 'cancel') {
-      ElMessage.error('删除操作失败')
+      ElMessage.error(error.message || '删除操作失败')
     }
   }
 }
@@ -110,7 +107,7 @@ function handlePageChange(page) {
 function handleExport() {
   // 直接触发浏览器下载
   const link = document.createElement('a')
-  link.href = '/api/todo/export'
+  link.href = todoApi.EXPORT_URL
   link.download = 'todos_export.csv'
   document.body.appendChild(link)
   link.click()
@@ -144,22 +141,11 @@ async function handleFileChange(event) {
       return
     }
 
-    const res = await fetch('/api/todo/import', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ items })
-    })
-
-    if (res.ok) {
-      const data = await res.json()
-      ElMessage.success(`导入成功，共导入 ${data.imported} 条任务`)
-      fetchList()
-    } else {
-      const err = await res.json()
-      ElMessage.error(err.error || '导入失败')
-    }
+    const data = await todoApi.importTodos(items)
+    ElMessage.success(`导入成功，共导入 ${data.imported} 条任务`)
+    fetchList()
   } catch (error) {
-    ElMessage.error('导入过程出错: ' + error.message)
+    ElMessage.error(error.message || '导入过程出错')
   } finally {
     importing.value = false
     event.target.value = '' // 重置以便重复上传同一文件
