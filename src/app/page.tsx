@@ -221,7 +221,12 @@ export default function Home() {
       setProgress({ percent: 100, current: validData.length, total: validData.length, label: "提交完成" });
       
       if (res.ok) {
-        message.success(`成功提交 ${validData.length} 条运单数据！`);
+        const resData = await res.json();
+        const skipped = resData.skippedDuplicates || 0;
+        const msg = skipped > 0 
+          ? `成功提交 ${resData.count} 条运单数据！（跳过 ${skipped} 条重复编码）`
+          : `成功提交 ${resData.count} 条运单数据！`;
+        message.success(msg);
         setStep("done");
         setTimeout(() => {
           setStep("idle");
@@ -232,7 +237,8 @@ export default function Home() {
           fetchHistory();
         }, 2500);
       } else {
-        message.error("提交失败，请稍后重试");
+        const errData = await res.json().catch(() => ({}));
+        message.error(errData.error || "提交失败，请稍后重试");
         setStep("preview");
       }
     } catch (e) {
