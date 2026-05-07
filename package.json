@@ -4,12 +4,14 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "build": "prisma generate && next build",
     "start": "next start",
     "lint": "eslint"
   },
   "dependencies": {
+    "@ant-design/icons": "^6.2.2",
     "@prisma/client": "^5.22.0",
+    "antd": "^6.3.7",
     "next": "16.2.5",
     "prisma": "^5.22.0",
     "react": "19.2.4",

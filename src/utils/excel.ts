@@ -41,7 +41,7 @@ export const parseExcelFile = async (file: File): Promise<ParsedExcel> => {
           }
 
           const rawHeaders = aoa[headerRowIndex] || [];
-          const headers = rawHeaders.map(h => h ? String(h).trim() : "").filter(Boolean);
+          const headers = rawHeaders.map(h => h ? String(h).trim() : "");
 
           // Now parse data starting from the row after the header
           const rawData = aoa.slice(headerRowIndex + 1);
@@ -55,8 +55,9 @@ export const parseExcelFile = async (file: File): Promise<ParsedExcel> => {
             
             const rowObj: ExcelRow = {};
             for (let i = 0; i < headers.length; i++) {
+              // Only assign if the header is not empty
               if (headers[i]) {
-                rowObj[headers[i]] = row[i];
+                rowObj[headers[i]] = row[i] !== undefined ? row[i] : "";
               }
             }
             formattedData.push(rowObj);
