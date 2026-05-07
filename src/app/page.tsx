@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import {
   Layout, Card, Row, Col, Button, Select, Progress, Typography, Table, 
   Space, Tag, Modal, message, Divider, Input, Empty, Spin
@@ -165,14 +165,57 @@ export default function Home() {
       setStep("idle");
     }
   };
+  // ========= 数据库重复检查（防抖） =========
+  const dbCheckTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  
+  const checkDbDuplicates = useCallback((currentData: any[], currentErrors: ValidationError[]) => {
+    const codesToCheck = currentData.map(r => r.externalCode).filter(Boolean);
+    if (codesToCheck.length === 0) return;
+    
+    // 防抖 500ms
+    if (dbCheckTimer.current) clearTimeout(dbCheckTimer.current);
+    dbCheckTimer.current = setTimeout(async () => {
+      try {
+        const res = await fetch("/api/waybills/check-duplicates", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ codes: codesToCheck })
+        });
+        const dbData = await res.json();
+        if (dbData.duplicates?.length > 0) {
+          // 合并：先移除旧的数据库重复错误，再添加新的
+          const nonDbErrors = currentErrors.filter(e => e.message !== "与数据库已存在数据重复");
+          const dbErrors: ValidationError[] = [];
+          currentData.forEach((row, i) => {
+            if (row.externalCode && dbData.duplicates.includes(row.externalCode)) {
+              dbErrors.push({
+                row: i + 1,
+                field: "externalCode",
+                fieldLabel: "外部编码",
+                message: "与数据库已存在数据重复",
+              });
+            }
+          });
+          setErrors([...nonDbErrors, ...dbErrors]);
+        } else {
+          // 清除旧的数据库重复错误
+          setErrors(prev => prev.filter(e => e.message !== "与数据库已存在数据重复"));
+        }
+      } catch (e) {
+        // 忽略网络错误
+      }
+    }, 500);
+  }, []);
 
   // ========= 数据编辑回调 =========
-  const handleDataChange = (newData: any[]) => {
-    // 直接校验标准格式数据，不再来回转换（避免数据丢失）
+  const handleDataChange = useCallback((newData: any[]) => {
+    // 本地校验（同步，立即反馈）
     const { validData: vData, errors: eData } = validateStandardData(newData);
     setValidData(vData);
     setErrors(eData);
-  };
+    // 数据库重复检查（异步，防抖）
+    checkDbDuplicates(vData, eData);
+  }, [checkDbDuplicates]);
 
   // ========= 导出 Excel =========
   const exportExcel = () => {
