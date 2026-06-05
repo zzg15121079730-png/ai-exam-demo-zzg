@@ -458,7 +458,6 @@ export default function Home() {
         if (saveRes.ok) {
           const saved = await saveRes.json();
           fetchRules();
-          if (saved.rule?.id) setSelectedRuleId(saved.rule.id);
         }
       }).catch(() => {});
 
