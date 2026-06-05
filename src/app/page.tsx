@@ -3,16 +3,20 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import {
   Layout, Card, Row, Col, Button, Select, Progress, Typography, Table, 
-  Space, Tag, Modal, message, Divider, Input, Empty, Spin, DatePicker
+  Space, Tag, Modal, message, Divider, Input, Empty, Spin, DatePicker,
+  Collapse, Form, Tooltip
 } from "antd";
 import type { Dayjs } from 'dayjs';
 import {
   UploadOutlined, FileTextOutlined, CheckCircleOutlined,
-  SyncOutlined, SearchOutlined, ReloadOutlined, ExportOutlined
+  SyncOutlined, SearchOutlined, ReloadOutlined, ExportOutlined,
+  SettingOutlined, RobotOutlined, ThunderboltOutlined, EyeOutlined
 } from "@ant-design/icons";
 import { UploadZone } from "@/components/UploadZone";
 import { DataGrid } from "@/components/DataGrid";
-import { parseExcelFile, guessMapping, generateFingerprint, standardFields } from "@/utils/excel";
+import { MappingModal } from "@/components/MappingModal";
+import { RuleConfig, RuleEngine } from "@/utils/ruleEngine";
+import { standardFields } from "@/utils/excel";
 import { validateData, validateStandardData, ValidationError } from "@/utils/validation";
 import * as XLSX from "xlsx";
 
@@ -25,9 +29,22 @@ export default function Home() {
   const [progress, setProgress] = useState({ percent: 0, current: 0, total: 0, label: "" });
   const [submitting, setSubmitting] = useState(false);
   
+  // 规则相关
+  const [rulesList, setRulesList] = useState<any[]>([]);
+  const [selectedRuleId, setSelectedRuleId] = useState<string>("ai-detect");
+  const [rulesLoading, setRulesLoading] = useState(false);
+  const [ruleModalOpen, setRuleModalOpen] = useState(false);
+  const [currentFile, setCurrentFile] = useState<File | null>(null);
+  const [aiRule, setAiRule] = useState<RuleConfig | null>(null);
+
+  // AI 配置相关
+  const [aiConfig, setAiConfig] = useState({
+    apiKey: "",
+    apiBaseUrl: "https://api.deepseek.com/v1",
+    modelName: "deepseek-chat"
+  });
+
   // 数据相关
-  const [rawHeaders, setRawHeaders] = useState<string[]>([]);
-  const [mapping, setMapping] = useState<Record<string, string>>({});
   const [validData, setValidData] = useState<any[]>([]);
   const [errors, setErrors] = useState<ValidationError[]>([]);
   const [fileName, setFileName] = useState("");
@@ -41,6 +58,47 @@ export default function Home() {
   const [searchName, setSearchName] = useState("");
   const [submitResult, setSubmitResult] = useState<{ success: number; skipped: number; total: number } | null>(null);
   const [searchDateRange, setSearchDateRange] = useState<[Dayjs | null, Dayjs | null] | null>(null);
+
+  // ========= 加载 localStorage 配置 =========
+  useEffect(() => {
+    const savedApiKey = localStorage.getItem("ai_api_key");
+    const savedBaseUrl = localStorage.getItem("ai_base_url");
+    const savedModel = localStorage.getItem("ai_model_name");
+    if (savedApiKey || savedBaseUrl || savedModel) {
+      setAiConfig({
+        apiKey: savedApiKey || "",
+        apiBaseUrl: savedBaseUrl || "https://api.deepseek.com/v1",
+        modelName: savedModel || "deepseek-chat"
+      });
+    }
+    fetchRules();
+    fetchHistory();
+  }, []);
+
+  const saveAiConfig = (key: string, val: string) => {
+    setAiConfig(prev => {
+      const next = { ...prev, [key]: val };
+      localStorage.setItem(`ai_${key.replace(/[A-Z]/g, letter => `_${letter.toLowerCase()}`)}`, val);
+      return next;
+    });
+    message.success("AI 大模型配置保存成功");
+  };
+
+  // ========= 获取解析规则列表 =========
+  const fetchRules = async () => {
+    setRulesLoading(true);
+    try {
+      const res = await fetch("/api/mapping");
+      const data = await res.json();
+      if (res.ok) {
+        setRulesList(data.rules || []);
+      }
+    } catch (e) {
+      console.error("加载解析规则失败:", e);
+    } finally {
+      setRulesLoading(false);
+    }
+  };
 
   // ========= 历史列表 =========
   const fetchHistory = async (page = 1, searchOverride?: string, dateOverride?: [Dayjs | null, Dayjs | null] | null | 'clear') => {
@@ -65,12 +123,10 @@ export default function Home() {
     }
   };
 
-  useEffect(() => { fetchHistory(); }, []);
-
-  // ========= 进度模拟 =========
+  // ========= 进度条动画模拟 =========
   const simulateProgress = (total: number, label: string, onComplete: () => void) => {
     let currentStep = 0;
-    const totalSteps = 50;
+    const totalSteps = 20;
     const timer = setInterval(() => {
       currentStep++;
       const percent = Math.min(100, Math.round((currentStep / totalSteps) * 100));
@@ -79,99 +135,255 @@ export default function Home() {
       if (currentStep >= totalSteps) {
         clearInterval(timer);
         setProgress({ percent: 100, current: total, total, label: "解析完成" });
-        setTimeout(onComplete, 300);
+        setTimeout(onComplete, 200);
       } else {
         setProgress({ percent, current, total, label });
       }
-    }, 30);
+    }, 20);
   };
 
-  // ========= 文件上传处理 =========
+  // ========= 上传文件并处理 =========
   const handleFileSelect = async (file: File) => {
+    setCurrentFile(file);
     setFileName(file.name);
     setStep("parsing");
-    setProgress({ percent: 0, current: 0, total: 0, label: "正在读取文件..." });
     
-    try {
-      const parsed = await parseExcelFile(file);
+    // 如果用户选择新建解析规则（大模型 AI 辅助）
+    if (selectedRuleId === "ai-detect") {
+      setProgress({ percent: 10, current: 0, total: 100, label: "正在上传并分析文件物理特征..." });
       
-      if (parsed.sheets.length === 0 || parsed.sheets[0].data.length === 0) {
-        message.error("文件为空或无有效数据 Sheet，请检查后重试");
-        setStep("idle");
-        return;
-      }
-      
-      // 选择最佳 sheet
-      let bestSheet = parsed.sheets[0];
-      let maxMatches = -1;
-      for (const sheet of parsed.sheets) {
-        const mapped = guessMapping(sheet.headers);
-        const matchCount = Object.keys(mapped).length;
-        if (matchCount > maxMatches) { maxMatches = matchCount; bestSheet = sheet; }
-      }
-      
-      const headers = bestSheet.headers;
-      const data = bestSheet.data;
-      setRawHeaders(headers);
-      
-      const guessed = guessMapping(headers);
-      setMapping(guessed);
-      
-      if (Object.keys(guessed).length === 0) {
-        message.warning("未能自动识别列映射，请检查 Excel 表头是否包含标准字段名");
-        setStep("idle");
-        return;
-      }
-      
-      // 模拟进度条
-      setProgress({ percent: 0, current: 0, total: data.length, label: `正在解析 ${file.name}...` });
-      simulateProgress(data.length, `正在校验数据 (${data.length} 条)`, () => {
-        const { validData: vData, errors: eData } = validateData(data, guessed, headers);
-        setValidData(vData);
-        setErrors(eData);
-        setStep("preview"); // 自动弹出预览弹框
+      try {
+        // 1. 调用后端接口分析文件特征，生成样本数据
+        const analyzeFormData = new FormData();
+        analyzeFormData.append("file", file);
+        const analyzeRes = await fetch("/api/mapping/analyze-file", {
+          method: "POST",
+          body: analyzeFormData
+        });
         
-        message.info(`已解析 ${vData.length} 条数据，${eData.length > 0 ? `发现 ${eData.length} 处错误` : '全部校验通过'}`);
+        if (!analyzeRes.ok) {
+          const err = await analyzeRes.json();
+          throw new Error(err.error || "文件特征分析失败");
+        }
         
-        // 异步检查数据库重复
-        const codesToCheck = vData.map(r => r.externalCode).filter(Boolean);
-        if (codesToCheck.length > 0) {
-          fetch("/api/waybills/check-duplicates", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ codes: codesToCheck })
+        const analyzeData = await analyzeRes.json();
+        
+        // 2. 调用大模型（或启发式回退）生成推荐规则
+        setProgress({ percent: 50, current: 0, total: 100, label: "大模型正在智能推理匹配规则..." });
+        const generateRes = await fetch("/api/mapping/generate-rule", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            fileType: analyzeData.fileType,
+            fileName: file.name,
+            excelSample: analyzeData.excelSample,
+            sampleTextText: analyzeData.sampleTextText || analyzeData.textSample || "",
+            apiKey: aiConfig.apiKey,
+            apiBaseUrl: aiConfig.apiBaseUrl,
+            modelName: aiConfig.modelName
           })
-          .then(res => res.json())
-          .then(dbData => {
-            if (dbData.duplicates?.length > 0) {
-              setErrors(prev => {
-                const dbErrors: ValidationError[] = [];
-                vData.forEach((row, i) => {
-                  if (row.externalCode && dbData.duplicates.includes(row.externalCode)) {
-                    if (!prev.find(e => e.row === i + 1 && e.field === "externalCode")) {
-                      dbErrors.push({ 
-                        row: i + 1, field: "externalCode", 
-                        fieldLabel: "外部编码", 
-                        message: "与数据库已存在数据重复" 
-                      });
-                    }
+        });
+
+        if (!generateRes.ok) {
+          const err = await generateRes.json();
+          throw new Error(err.error || "大模型规则推理失败");
+        }
+
+        const generateData = await generateRes.json();
+        
+        if (generateData.warning) {
+          message.warning(generateData.warning, 5);
+        }
+        
+        // 3. 开启规则确认弹窗
+        setAiRule(generateData.rule);
+        setRuleModalOpen(true);
+        setStep("idle"); // 规则模态框开启，主页返回就绪
+      } catch (err: any) {
+        message.error("大模型分析文件失败: " + err.message);
+        setStep("idle");
+      }
+    } else {
+      // 如果用户选择了已有的规则，直接执行解析
+      const chosenRule = rulesList.find(r => r.id === selectedRuleId);
+      if (!chosenRule) {
+        message.error("未找到所选解析规则，请检查");
+        setStep("idle");
+        return;
+      }
+      
+      const ruleConfig: RuleConfig = JSON.parse(chosenRule.mappings);
+      await executeParse(file, ruleConfig);
+    }
+  };
+
+  // 执行最终解析
+  const executeParse = async (file: File, rule: RuleConfig) => {
+    setStep("parsing");
+    setProgress({ percent: 10, current: 0, total: 100, label: "正在执行规则解析引擎..." });
+
+    try {
+      const ext = file.name.split('.').pop()?.toLowerCase();
+      
+      // 对于 Excel，为了极高效率和防卡顿，如果行数合理，我们直接在前台用 RuleEngine 跑
+      if (rule.fileType === "excel" && (ext === "xlsx" || ext === "xls")) {
+        const reader = new FileReader();
+        reader.onload = async (e) => {
+          try {
+            const data = e.target?.result;
+            const workbook = XLSX.read(data, { type: "binary" });
+            const parsedRows = RuleEngine.parseExcel(workbook, rule);
+            
+            if (parsedRows.length === 0) {
+              message.error("未能根据该规则解析出任何有效记录，请检查规则配置");
+              setStep("idle");
+              return;
+            }
+
+            simulateProgress(parsedRows.length, `正在对 ${parsedRows.length} 条数据进行物理约束校验...`, () => {
+              // 自动将规则定义的静态默认值或映射字段填充，并执行标准校验
+              // 为 mappings 里的 defaultValue 补全数据
+              const completedRows = parsedRows.map(row => {
+                const completed = { ...row };
+                rule.mappings.forEach(m => {
+                  if (m.defaultValue !== undefined && m.defaultValue !== "" && (completed[m.field] === undefined || completed[m.field] === "")) {
+                    completed[m.field] = m.defaultValue;
                   }
                 });
-                if (dbErrors.length > 0) {
-                  message.warning(`检测到 ${dbErrors.length} 条外部编码与数据库重复`);
-                }
-                return [...prev, ...dbErrors];
+                return completed;
               });
-            }
-          })
-          .catch(() => {});
+
+              const { validData: vData, errors: eData } = validateStandardData(completedRows);
+              setValidData(vData);
+              setErrors(eData);
+              setStep("preview");
+              message.success(`解析完成，共解析出 ${vData.length} 条数据`);
+              checkDuplicatesAsync(vData);
+            });
+
+          } catch (err: any) {
+            message.error("执行前端解析引擎出错: " + err.message);
+            setStep("idle");
+          }
+        };
+        reader.readAsBinaryString(file);
+      } else {
+        // PDF、Word 或者大文件，直接调后端接口解析
+        const formData = new FormData();
+        formData.append("file", file);
+        formData.append("rule", JSON.stringify(rule));
+
+        const res = await fetch("/api/mapping/parse-file", {
+          method: "POST",
+          body: formData
+        });
+        const parseData = await res.json();
+        
+        if (!res.ok) {
+          throw new Error(parseData.error || "后端解析失败");
         }
-      });
-    } catch (err) {
-      message.error("文件解析失败，请确认文件格式正确（支持 .xlsx / .xls）");
+
+        simulateProgress(parseData.count, "正在对解析到的数据进行物理约束校验...", () => {
+          const completedRows = (parseData.data || []).map((row: any) => {
+            const completed = { ...row };
+            rule.mappings.forEach(m => {
+              if (m.defaultValue !== undefined && m.defaultValue !== "" && (completed[m.field] === undefined || completed[m.field] === "")) {
+                completed[m.field] = m.defaultValue;
+              }
+            });
+            return completed;
+          });
+
+          const { validData: vData, errors: eData } = validateStandardData(completedRows);
+          setValidData(vData);
+          setErrors(eData);
+          setStep("preview");
+          message.success(`解析完成，共解析出 ${vData.length} 条数据`);
+          checkDuplicatesAsync(vData);
+        });
+      }
+    } catch (err: any) {
+      message.error("解析文件失败: " + err.message);
       setStep("idle");
     }
   };
+
+  // 异步检查数据库外部编码重复
+  const checkDuplicatesAsync = (vData: any[]) => {
+    const codesToCheck = vData.map(r => r.externalCode).filter(Boolean);
+    if (codesToCheck.length === 0) return;
+    
+    fetch("/api/waybills/check-duplicates", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ codes: codesToCheck })
+    })
+    .then(res => res.json())
+    .then(dbData => {
+      if (dbData.duplicates?.length > 0) {
+        setErrors(prev => {
+          const dbErrors: ValidationError[] = [];
+          vData.forEach((row, i) => {
+            if (row.externalCode && dbData.duplicates.includes(row.externalCode)) {
+              if (!prev.find(e => e.row === i + 1 && e.field === "externalCode")) {
+                dbErrors.push({ 
+                  row: i + 1, field: "externalCode", 
+                  fieldLabel: "外部编码", 
+                  message: "与数据库已存在数据重复" 
+                });
+              }
+            }
+          });
+          if (dbErrors.length > 0) {
+            message.warning(`检测到 ${dbErrors.length} 条外部编码与数据库重复`);
+          }
+          return [...prev, ...dbErrors];
+        });
+      }
+    })
+    .catch(() => {});
+  };
+
+  // ========= 模态框规则确认并保存 =========
+  const handleRuleModalConfirm = async (confirmedRule: RuleConfig) => {
+    setRuleModalOpen(false);
+    setStep("parsing");
+    setProgress({ percent: 10, current: 0, total: 100, label: "正在保存解析规则到数据库..." });
+
+    try {
+      // 1. 保存规则到数据库
+      const saveRes = await fetch("/api/mapping", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          fingerprint: `custom-${confirmedRule.templateName}-${Date.now()}`,
+          mappings: confirmedRule,
+          templateName: confirmedRule.templateName
+        })
+      });
+
+      if (!saveRes.ok) {
+        const err = await saveRes.json();
+        throw new Error(err.error || "解析规则保存数据库失败");
+      }
+
+      const savedRule = await saveRes.json();
+      message.success(`规则 “${confirmedRule.templateName}” 已成功保存到数据库！`);
+      
+      // 刷新列表并选中这条新规则
+      await fetchRules();
+      setSelectedRuleId(savedRule.rule.id);
+
+      // 2. 运行此规则进行完整文件解析
+      if (currentFile) {
+        await executeParse(currentFile, confirmedRule);
+      }
+    } catch (e: any) {
+      message.error("保存规则并执行解析失败: " + e.message);
+      setStep("idle");
+    }
+  };
+
   // ========= 数据库重复检查（防抖） =========
   const dbCheckTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   
@@ -190,7 +402,6 @@ export default function Home() {
         });
         const dbData = await res.json();
         if (dbData.duplicates?.length > 0) {
-          // 合并：先移除旧的数据库重复错误，再添加新的
           const nonDbErrors = currentErrors.filter(e => e.message !== "与数据库已存在数据重复");
           const dbErrors: ValidationError[] = [];
           currentData.forEach((row, i) => {
@@ -205,22 +416,17 @@ export default function Home() {
           });
           setErrors([...nonDbErrors, ...dbErrors]);
         } else {
-          // 清除旧的数据库重复错误
           setErrors(prev => prev.filter(e => e.message !== "与数据库已存在数据重复"));
         }
-      } catch (e) {
-        // 忽略网络错误
-      }
+      } catch (e) {}
     }, 500);
   }, []);
 
   // ========= 数据编辑回调 =========
   const handleDataChange = useCallback((newData: any[]) => {
-    // 本地校验（同步，立即反馈）
     const { validData: vData, errors: eData } = validateStandardData(newData);
     setValidData(vData);
     setErrors(eData);
-    // 数据库重复检查（异步，防抖）
     checkDbDuplicates(vData, eData);
   }, [checkDbDuplicates]);
 
@@ -239,7 +445,6 @@ export default function Home() {
 
   // ========= 提交下单 =========
   const handleSubmit = async () => {
-    // 1. 本地校验拦截
     if (errors.length > 0) {
       const dbDupCount = errors.filter(e => e.message === "与数据库已存在数据重复").length;
       const otherCount = errors.length - dbDupCount;
@@ -251,7 +456,7 @@ export default function Home() {
     }
     if (validData.length === 0) return;
     
-    // 2. 提交前再次同步检查数据库重复（防止用户编辑后未触发防抖检查）
+    // 提交前再次同步检查数据库重复
     const codesToCheck = validData.map(r => r.externalCode).filter(Boolean);
     if (codesToCheck.length > 0) {
       try {
@@ -262,7 +467,6 @@ export default function Home() {
         });
         const checkData = await checkRes.json();
         if (checkData.duplicates?.length > 0) {
-          // 标记重复行并拦截
           const dbErrors: ValidationError[] = [];
           validData.forEach((row, i) => {
             if (row.externalCode && checkData.duplicates.includes(row.externalCode)) {
@@ -276,12 +480,9 @@ export default function Home() {
           message.error(`检测到 ${checkData.duplicates.length} 条外部编码与数据库重复，请修改后重试`);
           return;
         }
-      } catch (e) {
-        // 网络错误不阻止提交
-      }
+      } catch (e) {}
     }
 
-    // 3. 开始提交
     setSubmitting(true);
     setStep("submitting");
     setSubmitResult(null);
@@ -293,7 +494,7 @@ export default function Home() {
       currentStep++;
       const percent = Math.min(95, Math.round((currentStep / totalSteps) * 95));
       const current = Math.min(validData.length, Math.round((percent / 100) * validData.length));
-      setProgress({ percent, current, total: validData.length, label: "提交中..." });
+      setProgress({ percent, current, total: validData.length, label: "数据批量入库中..." });
       if (currentStep >= totalSteps) clearInterval(timer);
     }, 80);
 
@@ -328,19 +529,23 @@ export default function Home() {
     }
   };
 
-  // ========= 错误汇总(分两列) =========
+  // 错误汇总两列分流
   const col1Errors = errors.slice(0, Math.ceil(errors.length / 2));
   const col2Errors = errors.slice(Math.ceil(errors.length / 2));
 
-  // ========= 历史表格列定义 =========
+  // 已导入运单列表列定义
   const historyColumns = [
-    { title: '外部编码', dataIndex: 'externalCode', width: 160 },
-    { title: '发件人姓名', dataIndex: 'senderName', width: 100 },
-    { title: '发件人电话', dataIndex: 'senderPhone', width: 120 },
+    { title: '外部编码', dataIndex: 'externalCode', width: 140 },
+    { title: '收货门店', dataIndex: 'receiverStore', width: 150, 
+      render: (text: string) => text ? <Tag color="cyan">{text}</Tag> : '-' 
+    },
     { title: '收件人姓名', dataIndex: 'receiverName', width: 100 },
     { title: '收件人电话', dataIndex: 'receiverPhone', width: 120 },
-    { title: '重量(kg)', dataIndex: 'weight', width: 80, align: 'center' as const },
-    { title: '件数', dataIndex: 'quantity', width: 60, align: 'center' as const },
+    { title: '收件人地址', dataIndex: 'receiverAddress', width: 220, ellipsis: true },
+    { title: 'SKU编码', dataIndex: 'skuCode', width: 120 },
+    { title: 'SKU名称', dataIndex: 'skuName', width: 140, ellipsis: true },
+    { title: '数量', dataIndex: 'quantity', width: 70, align: 'center' as const },
+    { title: '发件人姓名', dataIndex: 'senderName', width: 100 },
     { title: '温层', dataIndex: 'tempZone', width: 70, align: 'center' as const,
       render: (text: string) => {
         const colorMap: Record<string, string> = { '常温': 'default', '冷藏': 'blue', '冷冻': 'cyan' };
@@ -356,168 +561,260 @@ export default function Home() {
   ];
 
   return (
-    <Layout style={{ minHeight: '100vh', backgroundColor: '#f5f7fa' }}>
-      <Content style={{ padding: '24px 32px', maxWidth: 1400, margin: '0 auto', width: '100%' }}>
+    <Layout style={{ minHeight: '100vh', backgroundColor: '#f0f9f9' }}>
+      <Content style={{ padding: '24px 32px', maxWidth: 1500, margin: '0 auto', width: '100%' }}>
         
-        {/* ===== 页面标题 ===== */}
-        <div style={{ marginBottom: 24, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        {/* ===== 页面标题与鲸天主题风格对齐 ===== */}
+        <div style={{ 
+          marginBottom: 24, 
+          display: 'flex', 
+          justifyContent: 'space-between', 
+          alignItems: 'center',
+          background: 'linear-gradient(90deg, #0fc6c2 0%, #08979c 100%)',
+          padding: '16px 24px',
+          borderRadius: 12,
+          boxShadow: '0 4px 12px rgba(15, 198, 194, 0.15)'
+        }}>
           <div>
-            <Title level={3} style={{ margin: 0 }}>📦 物流运单智能导入系统</Title>
-            <Text type="secondary">支持多模板自动识别 · Excel 在线编辑 · 一键批量下单</Text>
+            <Title level={3} style={{ margin: 0, color: '#fff' }}>🌊 鲸天万能智能文件导入系统 V2</Title>
+            <Text style={{ color: 'rgba(255, 255, 255, 0.85)' }}>大模型解析规则推理 · 全格式通用引擎驱动 · 极端性能优化校验</Text>
           </div>
           <Space>
-            <Tag color="blue">Next.js + Ant Design</Tag>
-            <Tag color="green">TypeScript</Tag>
-            <Tag color="purple">PostgreSQL</Tag>
+            <Tag color="white" style={{ color: '#0fc6c2', fontWeight: 'bold' }}>Next.js App Router</Tag>
+            <Tag color="white" style={{ color: '#0fc6c2', fontWeight: 'bold' }}>Prisma ORM</Tag>
+            <Tag color="white" style={{ color: '#08979c', fontWeight: 'bold' }}>DeepSeek AI</Tag>
           </Space>
         </div>
 
+        {/* ===== AI 大模型配置面板 ===== */}
+        <div style={{ marginBottom: 20 }}>
+          <Collapse 
+            bordered={false} 
+            expandIconPosition="end"
+            style={{ backgroundColor: '#fff', borderRadius: 8, boxShadow: '0 2px 8px rgba(0,0,0,0.04)' }}
+            items={[{
+              key: '1',
+              label: (
+                <span style={{ fontWeight: 500, color: '#4e5969' }}>
+                  <RobotOutlined style={{ color: '#0fc6c2', marginRight: 8 }} />
+                  大模型配置 (可选：如不配置，系统将采用高度优化的内置启发式算法分析测试出库单)
+                </span>
+              ),
+              children: (
+                <Form layout="inline" size="middle" style={{ gap: 12 }}>
+                  <Form.Item label="API Key">
+                    <Input.Password 
+                      placeholder="DEEPSEEK_API_KEY" 
+                      value={aiConfig.apiKey} 
+                      onChange={e => saveAiConfig("apiKey", e.target.value)}
+                      style={{ width: 220 }}
+                    />
+                  </Form.Item>
+                  <Form.Item label="Base URL">
+                    <Input 
+                      placeholder="https://api.deepseek.com/v1" 
+                      value={aiConfig.apiBaseUrl} 
+                      onChange={e => saveAiConfig("apiBaseUrl", e.target.value)}
+                      style={{ width: 240 }}
+                    />
+                  </Form.Item>
+                  <Form.Item label="Model Name">
+                    <Input 
+                      placeholder="deepseek-chat" 
+                      value={aiConfig.modelName} 
+                      onChange={e => saveAiConfig("modelName", e.target.value)}
+                      style={{ width: 160 }}
+                    />
+                  </Form.Item>
+                </Form>
+              )
+            }]}
+          />
+        </div>
+
         <Row gutter={24}>
-          {/* ===== 左侧：导入区 ===== */}
+          {/* ===== 左侧：导入区域 ===== */}
           <Col xs={24} lg={16}>
             <Card 
-              title={<span>📤 模块一：模板管理与文件导入</span>}
+              title={
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
+                  <span style={{ fontWeight: 'bold' }}>📤 模块一 & 二：解析规则选择与文件上传</span>
+                  {rulesLoading && <Spin size="small" />}
+                </div>
+              }
               bordered={false}
-              style={{ marginBottom: 24, borderRadius: 8 }}
+              style={{ marginBottom: 24, borderRadius: 12, boxShadow: '0 4px 16px rgba(0,0,0,0.05)' }}
             >
+              <div style={{ marginBottom: 20 }}>
+                <span style={{ display: 'block', marginBottom: 8, fontWeight: 500, color: '#4e5969' }}>
+                  请先选择匹配该文件的解析规则模板：
+                </span>
+                <Select
+                  style={{ width: '100%', height: 40 }}
+                  value={selectedRuleId}
+                  onChange={setSelectedRuleId}
+                  options={[
+                    { label: "✨ 新建解析规则 (通过大模型 AI 预处理分析)", value: "ai-detect" },
+                    ...rulesList.map(r => ({ label: `📋 [已存模板] ${r.templateName}`, value: r.id }))
+                  ]}
+                />
+              </div>
+
               <UploadZone onFileSelect={handleFileSelect} />
               
-              {/* 导入进度条 */}
+              {/* 解析实时进度条 */}
               {step === "parsing" && (
-                <div style={{ marginTop: 20 }}>
+                <div style={{ marginTop: 24, padding: '16px 20px', backgroundColor: '#fafafa', borderRadius: 8 }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
-                    <Text strong>{progress.label}</Text>
-                    <Text type="secondary">{progress.percent}% ({progress.current}/{progress.total})</Text>
+                    <Text strong style={{ color: '#0fc6c2' }}>{progress.label}</Text>
+                    <Text type="secondary">{progress.percent}%</Text>
                   </div>
                   <Progress 
                     percent={progress.percent} 
                     showInfo={false} 
-                    strokeWidth={12} 
+                    strokeWidth={10} 
                     status="active"
-                    strokeColor={{ from: '#1677ff', to: '#52c41a' }}
+                    strokeColor={{ from: '#0fc6c2', to: '#13c2c2' }}
                   />
                 </div>
               )}
 
-              {/* 上传成功提示 */}
+              {/* 上传成功状态展示 */}
               {step !== "idle" && step !== "parsing" && fileName && (
                 <div style={{ 
-                  marginTop: 16, padding: '8px 16px', 
-                  backgroundColor: '#f6ffed', border: '1px solid #b7eb8f', borderRadius: 6,
+                  marginTop: 20, padding: '12px 20px', 
+                  backgroundColor: '#e6fffb', border: '1px solid #87e8de', borderRadius: 8,
                   display: 'flex', justifyContent: 'space-between', alignItems: 'center'
                 }}>
-                  <span><CheckCircleOutlined style={{ color: '#52c41a', marginRight: 8 }} />
-                    已加载: <Text strong>{fileName}</Text>，共 {validData.length} 条数据
+                  <span>
+                    <CheckCircleOutlined style={{ color: '#0fc6c2', marginRight: 8, fontSize: 16 }} />
+                    已成功解析文件: <Text strong style={{ color: '#006d75' }}>{fileName}</Text>，共 <Text strong style={{ color: '#0fc6c2', fontSize: 16 }}>{validData.length}</Text> 条出库单 SKU 明细
                   </span>
-                  <Button type="link" size="small" onClick={() => setStep("preview")}>
-                    重新查看预览
+                  <Button type="primary" size="small" onClick={() => setStep("preview")} style={{ backgroundColor: '#0fc6c2', borderColor: '#0fc6c2' }}>
+                    打开预览网格
                   </Button>
                 </div>
               )}
             </Card>
 
-            {/* ===== 功能描述卡片 ===== */}
+            {/* ===== 架构优势卡片 ===== */}
             <Card
-              title={<span>📋 模块二 & 三：数据预览与提交下单</span>}
+              title={<span>🚀 万能智能解析核心能力</span>}
               bordered={false}
-              style={{ marginBottom: 24, borderRadius: 8 }}
+              style={{ marginBottom: 24, borderRadius: 12, boxShadow: '0 4px 16px rgba(0,0,0,0.05)' }}
             >
-              <div style={{ color: '#666', lineHeight: '28px' }}>
-                <p>• 上传 Excel 后自动弹出<Text strong>预览弹框</Text>，以类 Excel 表格展示所有数据</p>
-                <p>• 支持<Text strong>单元格点击编辑</Text>，Tab/Enter 切换，修改后即时重新校验</p>
-                <p>• 错误单元格<Text type="danger" strong>红色高亮 + 行内文字提示</Text>，一次性展示全部错误</p>
-                <p>• 支持<Text strong>删除行、新增空行、导出 Excel</Text></p>
-                <p>• 全部校验通过后，点击「确认提交」将数据持久化到数据库</p>
-              </div>
+              <Row gutter={16} style={{ color: '#4e5969', lineHeight: '28px' }}>
+                <Col span={12}>
+                  <p>• <strong>无硬编码适配</strong>：基于高度通用规则引擎配置，杜绝针对单文件的if-else逻辑</p>
+                  <p>• <strong>AI 辅助规则分析</strong>：支持大模型极速提取表头、定位尾部数据并生成推荐规则</p>
+                  <p>• <strong>试解析测试验证</strong>：内置数据流试运行检测，支持预览无误后再确认入库</p>
+                </Col>
+                <Col span={12}>
+                  <p>• <strong>多样物理提取</strong>：支持表尾散落定位、跨行继承合并、矩阵门店行列转置</p>
+                  <p>• <strong>高性能处理</strong>：纯前端秒级处理数千行 Excel 解析与校验，大列表毫秒级响应不卡死</p>
+                  <p>• <strong>全格式兼容</strong>：支持常规 Excel，以及 PDF、Word 纯文本提取及字段正则捕捉</p>
+                </Col>
+              </Row>
             </Card>
           </Col>
 
-          {/* ===== 右侧：字段说明 + 快捷操作 ===== */}
+          {/* ===== 右侧：快捷工具 + 字段提示 ===== */}
           <Col xs={24} lg={8}>
             <Card 
-              title="📑 标准字段说明" 
+              title="⚡ 快捷操作" 
               bordered={false} 
-              style={{ marginBottom: 24, borderRadius: 8 }}
+              style={{ marginBottom: 24, borderRadius: 12, boxShadow: '0 4px 16px rgba(0,0,0,0.05)' }}
+              size="small"
+            >
+              <div style={{ padding: 12 }}>
+                <Button 
+                  type="primary" block size="large"
+                  style={{ marginBottom: 12, height: 45, backgroundColor: '#0fc6c2', borderColor: '#0fc6c2' }}
+                  disabled={validData.length === 0}
+                  onClick={() => setStep("preview")}
+                  icon={<EyeOutlined />}
+                >
+                  打开预览数据纠错弹窗
+                </Button>
+                <Button 
+                  block 
+                  icon={<ExportOutlined />}
+                  size="large"
+                  style={{ marginBottom: 12, height: 45 }}
+                  disabled={validData.length === 0}
+                  onClick={exportExcel}
+                >
+                  导出 Excel
+                </Button>
+                <Button 
+                  block 
+                  icon={<ReloadOutlined />}
+                  size="large"
+                  style={{ height: 45 }}
+                  onClick={() => fetchHistory()}
+                >
+                  刷新运单列表
+                </Button>
+              </div>
+            </Card>
+
+            <Card 
+              title="📑 下单字段定义与规范" 
+              bordered={false} 
+              style={{ borderRadius: 12, boxShadow: '0 4px 16px rgba(0,0,0,0.05)' }}
               size="small"
             >
               <table style={{ width: '100%', fontSize: 13, borderCollapse: 'collapse' }}>
                 <thead>
                   <tr style={{ borderBottom: '1px solid #f0f0f0' }}>
-                    <th style={{ padding: '6px 0', textAlign: 'left', color: '#666' }}>字段名</th>
-                    <th style={{ padding: '6px 0', textAlign: 'center', color: '#666', width: 40 }}>必填</th>
-                    <th style={{ padding: '6px 0', textAlign: 'left', color: '#666' }}>说明</th>
+                    <th style={{ padding: '8px 0', textAlign: 'left', color: '#86909c' }}>字段名</th>
+                    <th style={{ padding: '8px 0', textAlign: 'center', color: '#86909c', width: 50 }}>必填</th>
+                    <th style={{ padding: '8px 0', textAlign: 'left', color: '#86909c' }}>业务说明</th>
                   </tr>
                 </thead>
                 <tbody>
                   {standardFields.map(f => (
                     <tr key={f.key} style={{ borderBottom: '1px solid #f5f5f5' }}>
-                      <td style={{ padding: '5px 0', fontWeight: 500 }}>{f.label}</td>
-                      <td style={{ padding: '5px 0', textAlign: 'center' }}>
-                        {f.required ? <Tag color="red" style={{ margin: 0, fontSize: 11 }}>是</Tag> : 
-                          <Tag style={{ margin: 0, fontSize: 11 }}>否</Tag>}
+                      <td style={{ padding: '6px 0', fontWeight: 500 }}>{f.label}</td>
+                      <td style={{ padding: '6px 0', textAlign: 'center' }}>
+                        {f.key === 'skuCode' || f.key === 'skuName' || f.key === 'quantity' || f.key === 'tempZone' ? 
+                          <Tag color="red" style={{ margin: 0, fontSize: 10 }}>是</Tag> : 
+                          <Tag style={{ margin: 0, fontSize: 10 }}>否</Tag>}
                       </td>
-                      <td style={{ padding: '5px 0', color: '#999', fontSize: 12 }}>
-                        {f.key === 'externalCode' && '唯一编号，用于去重'}
-                        {f.key === 'senderName' && '寄件人姓名'}
-                        {f.key === 'senderPhone' && '寄件人联系方式'}
-                        {f.key === 'senderAddress' && '寄件人完整地址'}
-                        {f.key === 'receiverName' && '收货人姓名'}
-                        {f.key === 'receiverPhone' && '收货人联系方式'}
-                        {f.key === 'receiverAddress' && '收货人完整地址'}
-                        {f.key === 'weight' && '货物重量，必须>0'}
-                        {f.key === 'quantity' && '包裹数，正整数'}
-                        {f.key === 'tempZone' && '常温/冷藏/冷冻'}
-                        {f.key === 'remark' && '附加说明信息'}
+                      <td style={{ padding: '6px 0', color: '#86909c', fontSize: 12 }}>
+                        {f.key === 'externalCode' && '订单唯一编号，用于去重聚合'}
+                        {f.key === 'receiverStore' && '收货门店，A组门店模式的核心字段'}
+                        {f.key === 'receiverName' && '收件人姓名，B组收件人模式字段'}
+                        {f.key === 'receiverPhone' && '收货联系人手机/座机电话'}
+                        {f.key === 'receiverAddress' && '收货人完整详细地址'}
+                        {f.key === 'senderName' && '发件人姓名，支持配置静态默认值'}
+                        {f.key === 'senderPhone' && '发件电话，支持配置静态默认值'}
+                        {f.key === 'senderAddress' && '发件仓库地址，支持静态默认值'}
+                        {f.key === 'skuCode' && 'SKU 编码，用于区分出库商品'}
+                        {f.key === 'skuName' && 'SKU 名称，出库商品明细'}
+                        {f.key === 'quantity' && '发货数量，必须为正整数'}
+                        {f.key === 'skuSpec' && '物品规格型号'}
+                        {f.key === 'weight' && '货物重量(kg)'}
+                        {f.key === 'tempZone' && '温层要求，可选常温/冷藏/冷冻'}
+                        {f.key === 'remark' && '其他附言备注信息'}
                       </td>
                     </tr>
                   ))}
                 </tbody>
               </table>
             </Card>
-
-            <Card 
-              title="⚡ 快捷操作" 
-              bordered={false} 
-              style={{ borderRadius: 8 }}
-              size="small"
-            >
-              <Button 
-                type="primary" block size="large"
-                style={{ marginBottom: 12 }}
-                disabled={validData.length === 0}
-                onClick={() => setStep("preview")}
-              >
-                打开预览弹框
-              </Button>
-              <Button 
-                block 
-                icon={<ExportOutlined />}
-                style={{ marginBottom: 12 }}
-                disabled={validData.length === 0}
-                onClick={exportExcel}
-              >
-                导出为 Excel 文件
-              </Button>
-              <Button 
-                block 
-                icon={<ReloadOutlined />}
-                onClick={() => fetchHistory()}
-              >
-                刷新运单列表
-              </Button>
-            </Card>
           </Col>
         </Row>
 
         {/* ============================================ */}
-        {/* ===== 预览弹框 Modal (核心交互) ===== */}
+        {/* ===== 预览网格与纠错 Modal (核心交互) ===== */}
         {/* ============================================ */}
         <Modal
           title={
             <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
               <span style={{ fontSize: 18, fontWeight: 'bold' }}>
-                {step === "submitting" ? "⏳ 正在提交..." : 
-                 step === "done" ? "✅ 提交成功" : "📊 导入数据预览与纠错"}
+                {step === "submitting" ? "⏳ 批量运单正在保存入库..." : 
+                 step === "done" ? "✅ 出库单提交成功" : "📊 出库运单导入预览与行内实时纠错"}
               </span>
               {step === "preview" && fileName && (
                 <Tag color="processing">{fileName}</Tag>
@@ -526,24 +823,28 @@ export default function Home() {
           }
           open={step === "preview" || step === "submitting" || step === "done"}
           onCancel={() => {
-            if (step === "submitting") return; // 提交中不允许关闭
+            if (step === "submitting") return;
             setStep("idle");
           }}
-          width={1300}
+          width={1400}
           maskClosable={false}
           keyboard={step !== "submitting"}
           destroyOnClose={false}
-          styles={{ body: { maxHeight: '70vh', overflow: 'auto' } }}
+          styles={{ body: { maxHeight: '72vh', overflow: 'auto' } }}
           footer={
             step === "done" ? (
-              <Button type="primary" onClick={() => { setStep("idle"); setValidData([]); setErrors([]); setFileName(""); setSubmitResult(null); fetchHistory(); }}>
-                关闭
+              <Button 
+                type="primary" 
+                onClick={() => { setStep("idle"); setValidData([]); setErrors([]); setFileName(""); setSubmitResult(null); fetchHistory(); }}
+                style={{ backgroundColor: '#0fc6c2', borderColor: '#0fc6c2' }}
+              >
+                关闭预览并返回首页
               </Button>
             ) : (
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <div>
                   {errors.length > 0 && (
-                    <Text type="danger">⚠ 共 {errors.length} 处错误，请修复后再提交</Text>
+                    <Text type="danger" style={{ fontWeight: 'bold' }}>⚠ 当前仍有 {errors.length} 处校验错误，请根据表格内高亮提示修正后再提交下单</Text>
                   )}
                 </div>
                 <Space>
@@ -559,8 +860,9 @@ export default function Home() {
                     loading={step === "submitting"}
                     disabled={errors.length > 0 || validData.length === 0}
                     size="large"
+                    style={{ backgroundColor: '#0fc6c2', borderColor: '#0fc6c2' }}
                   >
-                    {errors.length > 0 ? `修复 ${errors.length} 处错误后提交` : "✅ 确认提交下单"}
+                    {errors.length > 0 ? `修正 ${errors.length} 处错误后提交` : "✅ 确认提交下单"}
                   </Button>
                 </Space>
               </div>
@@ -570,10 +872,10 @@ export default function Home() {
           {/* 提交进度 */}
           {step === "submitting" && (
             <div style={{ padding: '60px 0', textAlign: 'center' }}>
-              <Progress type="circle" percent={progress.percent} strokeWidth={8} size={120} />
+              <Progress type="circle" percent={progress.percent} strokeWidth={8} size={120} strokeColor="#0fc6c2" />
               <h3 style={{ marginTop: 20, color: '#333' }}>{progress.label}</h3>
               <Text type="secondary">
-                进度: {progress.percent}% · 已处理 {progress.current}/{progress.total} 条
+                总体导入进度: {progress.percent}% · 已解析完成 {progress.current}/{progress.total} 行运单 SKU
               </Text>
             </div>
           )}
@@ -581,27 +883,27 @@ export default function Home() {
           {/* 提交成功汇总 */}
           {step === "done" && (
             <div style={{ padding: '40px 0', textAlign: 'center' }}>
-              <CheckCircleOutlined style={{ fontSize: 72, color: '#52c41a' }} />
-              <h2 style={{ marginTop: 20, color: '#333' }}>提交成功！</h2>
+              <CheckCircleOutlined style={{ fontSize: 72, color: '#0fc6c2' }} />
+              <h2 style={{ marginTop: 20, color: '#333' }}>批量出库运单提交入库成功！</h2>
               <div style={{
                 margin: '20px auto', padding: '16px 32px',
-                backgroundColor: '#f6ffed', border: '1px solid #b7eb8f',
+                backgroundColor: '#e6fffb', border: '1px solid #87e8de',
                 borderRadius: 8, display: 'inline-block', textAlign: 'left',
               }}>
                 <p style={{ margin: '4px 0', fontSize: 15 }}>
-                  ✅ 成功入库：<Text strong style={{ fontSize: 18, color: '#52c41a' }}>{submitResult?.success ?? 0}</Text> 条
+                  ✅ 成功写入数据库：<Text strong style={{ fontSize: 18, color: '#0fc6c2' }}>{submitResult?.success ?? 0}</Text> 条记录
                 </p>
                 {(submitResult?.skipped ?? 0) > 0 && (
                   <p style={{ margin: '4px 0', fontSize: 15 }}>
-                    ⚠️ 跳过重复：<Text strong style={{ fontSize: 18, color: '#faad14' }}>{submitResult?.skipped}</Text> 条
+                    ⚠️ 跳过数据库已存在外部编码：<Text strong style={{ fontSize: 18, color: '#faad14' }}>{submitResult?.skipped}</Text> 条
                   </p>
                 )}
                 <p style={{ margin: '4px 0', fontSize: 15 }}>
-                  📦 总提交：<Text strong>{submitResult?.total ?? 0}</Text> 条
+                  📦 同批次总明细：<Text strong>{submitResult?.total ?? 0}</Text> 条
                 </p>
               </div>
               <div style={{ marginTop: 16 }}>
-                <Text type="secondary">数据已持久化到 Neon PostgreSQL 云端数据库</Text>
+                <Text type="secondary">运单已持久化至 Neon 云端 PostgreSQL 数据库关系表中。</Text>
               </div>
             </div>
           )}
@@ -631,24 +933,24 @@ export default function Home() {
                   marginTop: 16, 
                   backgroundColor: '#fff2f0', 
                   border: '1px solid #ffccc7', 
-                  borderRadius: 6, 
-                  padding: '12px 20px' 
+                  borderRadius: 8, 
+                  padding: '16px 20px' 
                 }}>
                   <div style={{ color: '#cf1322', fontWeight: 'bold', fontSize: 14, marginBottom: 8 }}>
-                    ❌ 错误汇总 ({errors.length} 处)
+                    ❌ 行内异常与物理约束报错汇总 ({errors.length} 处)
                   </div>
-                  <Row>
+                  <Row gutter={16}>
                     <Col span={12}>
                       {col1Errors.map((e, i) => (
-                        <div key={i} style={{ color: '#cf1322', lineHeight: '22px', fontSize: 13 }}>
-                          • 第 {e.row} 行，{e.fieldLabel}：{e.message}
+                        <div key={i} style={{ color: '#cf1322', lineHeight: '24px', fontSize: 13 }}>
+                          • 第 {e.row} 行，[{e.fieldLabel}]：{e.message}
                         </div>
                       ))}
                     </Col>
                     <Col span={12}>
                       {col2Errors.map((e, i) => (
-                        <div key={i} style={{ color: '#cf1322', lineHeight: '22px', fontSize: 13 }}>
-                          • 第 {e.row} 行，{e.fieldLabel}：{e.message}
+                        <div key={i} style={{ color: '#cf1322', lineHeight: '24px', fontSize: 13 }}>
+                          • 第 {e.row} 行，[{e.fieldLabel}]：{e.message}
                         </div>
                       ))}
                     </Col>
@@ -659,11 +961,11 @@ export default function Home() {
           )}
         </Modal>
 
-        {/* ===== 模块四：已导入运单列表 ===== */}
+        {/* ===== 模块五：已导入运单列表 (历史数据) ===== */}
         <Card
-          title={<span>📦 模块四：已导入运单列表</span>}
+          title={<span>📦 模块五：已导入历史出库运单列表</span>}
           bordered={false}
-          style={{ borderRadius: 8 }}
+          style={{ borderRadius: 12, boxShadow: '0 4px 16px rgba(0,0,0,0.05)' }}
           extra={
             <Space wrap>
               <Input
@@ -692,7 +994,7 @@ export default function Home() {
                 placeholder={['开始日期', '结束日期']}
                 allowClear
               />
-              <Button size="small" type="primary" onClick={() => fetchHistory(1)}>
+              <Button size="small" type="primary" onClick={() => fetchHistory(1)} style={{ backgroundColor: '#0fc6c2', borderColor: '#0fc6c2' }}>
                 搜索
               </Button>
               <Button size="small" icon={<ReloadOutlined />} onClick={() => { 
@@ -718,12 +1020,26 @@ export default function Home() {
               showSizeChanger: false,
             }}
             size="middle"
-            scroll={{ x: 1200 }}
+            scroll={{ x: 1400 }}
             columns={historyColumns}
-            locale={{ emptyText: <Empty description="暂无导入记录，请先上传 Excel 文件" /> }}
+            locale={{ emptyText: <Empty description="暂无导入记录，请在上方上传出库单文件" /> }}
           />
         </Card>
       </Content>
+
+      {/* ===== 规则微调与试解析弹框 ===== */}
+      {ruleModalOpen && (
+        <MappingModal
+          isOpen={ruleModalOpen}
+          file={currentFile}
+          initialRule={aiRule}
+          onConfirm={handleRuleModalConfirm}
+          onCancel={() => {
+            setRuleModalOpen(false);
+            setStep("idle");
+          }}
+        />
+      )}
     </Layout>
   );
 }

@@ -17,11 +17,12 @@ export const UploadZone: React.FC<UploadZoneProps> = ({ onFileSelect }) => {
     name: 'file',
     multiple: false,
     showUploadList: false,
-    accept: ".xlsx, .xls",
+    accept: ".xlsx, .xls, .docx, .pdf",
     beforeUpload: (file) => {
-      const isExcel = file.type === "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" || file.type === "application/vnd.ms-excel" || file.name.endsWith('.xlsx') || file.name.endsWith('.xls');
-      if (!isExcel) {
-        alert("请上传 Excel 文件 (.xlsx 或 .xls)");
+      const ext = file.name.split('.').pop()?.toLowerCase();
+      const allowed = ["xlsx", "xls", "docx", "pdf"];
+      if (!ext || !allowed.includes(ext)) {
+        alert("请上传 Excel (.xlsx/.xls)、Word (.docx) 或 PDF 文件");
         return Upload.LIST_IGNORE;
       }
       onFileSelect(file);
@@ -30,13 +31,15 @@ export const UploadZone: React.FC<UploadZoneProps> = ({ onFileSelect }) => {
   };
 
   return (
-    <Dragger {...props} style={{ padding: '40px 0', backgroundColor: '#fafafa' }}>
+    <Dragger {...props} style={{ padding: '40px 0', backgroundColor: '#fafafa', borderRadius: 8 }}>
       <p className="ant-upload-drag-icon">
-        <InboxOutlined style={{ color: '#1677ff' }} />
+        <InboxOutlined style={{ color: '#0fc6c2' }} />
       </p>
-      <p className="ant-upload-text">支持拖拽或点击上传 Excel (.xlsx / .xls) 文件</p>
+      <p className="ant-upload-text" style={{ fontSize: 16, fontWeight: 500 }}>
+        点击或将文件拖拽到这里上传
+      </p>
       <p className="ant-upload-hint">
-        支持 .xlsx 或 .xls 格式。系统将自动识别模板列名并完成映射。
+        支持 Excel (.xlsx / .xls)、Word (.docx) 以及 PDF 格式
       </p>
     </Dragger>
   );

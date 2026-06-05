@@ -5,18 +5,21 @@ export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const fingerprint = searchParams.get("fingerprint");
 
-  if (!fingerprint) {
-    return NextResponse.json({ error: "Missing fingerprint" }, { status: 400 });
-  }
-
   try {
-    const rule = await prisma.mappingRule.findUnique({
-      where: { fingerprint },
-    });
+    if (fingerprint) {
+      const rule = await prisma.mappingRule.findUnique({
+        where: { fingerprint },
+      });
+      return NextResponse.json({ rule });
+    }
 
-    return NextResponse.json({ rule });
+    // 查询所有映射规则
+    const rules = await prisma.mappingRule.findMany({
+      orderBy: { updatedAt: "desc" },
+    });
+    return NextResponse.json({ rules });
   } catch (error) {
-    console.error("Error fetching mapping rule:", error);
+    console.error("Error fetching mapping rules:", error);
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }

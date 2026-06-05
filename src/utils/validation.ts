@@ -7,6 +7,135 @@ export interface ValidationError {
   message: string;
 }
 
+/**
+ * 校验行数据（通用的二选一及类型校验）
+ */
+function validateRow(row: any, rowNum: number, reverseMapping: Record<string, string>): ValidationError[] {
+  const errors: ValidationError[] = [];
+
+  // 1. 常规必填校验 (比如 SKU物品编码、SKU物品名称、SKU发货数量、发件人等)
+  standardFields.forEach((field) => {
+    const val = row[field.key];
+    const headerName = reverseMapping[field.key] || field.label;
+    
+    if (field.required && (val === undefined || val === null || String(val).trim() === "")) {
+      errors.push({
+        row: rowNum,
+        field: field.key,
+        fieldLabel: headerName,
+        message: "不能为空",
+      });
+    }
+  });
+
+  // 2. A组门店模式与B组收件人模式二选一校验
+  // A组：receiverStore 不为空
+  // B组：receiverName, receiverPhone, receiverAddress 均不为空
+  const hasStore = row.receiverStore !== undefined && row.receiverStore !== null && String(row.receiverStore).trim() !== "";
+  const hasReceiverInfo = 
+    (row.receiverName !== undefined && row.receiverName !== null && String(row.receiverName).trim() !== "") &&
+    (row.receiverPhone !== undefined && row.receiverPhone !== null && String(row.receiverPhone).trim() !== "") &&
+    (row.receiverAddress !== undefined && row.receiverAddress !== null && String(row.receiverAddress).trim() !== "");
+
+  if (!hasStore && !hasReceiverInfo) {
+    // 两个模式都没满足
+    errors.push({
+      row: rowNum,
+      field: "receiverStore",
+      fieldLabel: reverseMapping.receiverStore || "收货门店",
+      message: "A组收货门店模式与B组收件人姓名/电话/地址模式必须二选一必填",
+    });
+    errors.push({
+      row: rowNum,
+      field: "receiverName",
+      fieldLabel: reverseMapping.receiverName || "收件人姓名",
+      message: "A组收货门店模式与B组收件人姓名/电话/地址模式必须二选一必填",
+    });
+    errors.push({
+      row: rowNum,
+      field: "receiverPhone",
+      fieldLabel: reverseMapping.receiverPhone || "收件人电话",
+      message: "A组收货门店模式与B组收件人姓名/电话/地址模式必须二选一必填",
+    });
+    errors.push({
+      row: rowNum,
+      field: "receiverAddress",
+      fieldLabel: reverseMapping.receiverAddress || "收件人地址",
+      message: "A组收货门店模式与B组收件人姓名/电话/地址模式必须二选一必填",
+    });
+  }
+
+  // 3. 格式校验
+  
+  // 手机号: 1开头11位 | 座机: 区号-号码
+  const phoneRegex = /^1[3-9]\d{9}$|^0\d{2,3}-?\d{7,8}$/;
+  
+  // 发件人电话格式校验
+  if (row.senderPhone) {
+    const senderPhoneStr = String(row.senderPhone).replace(/\s+/g, '');
+    if (!phoneRegex.test(senderPhoneStr)) {
+      errors.push({
+        row: rowNum,
+        field: "senderPhone",
+        fieldLabel: reverseMapping.senderPhone || "发件人电话",
+        message: "手机号需1开头11位，或座机格式如010-12345678",
+      });
+    }
+  }
+
+  // 收件人电话格式校验 (只在填写了收件人电话时校验)
+  if (row.receiverPhone) {
+    const receiverPhoneStr = String(row.receiverPhone).replace(/\s+/g, '');
+    if (!phoneRegex.test(receiverPhoneStr)) {
+      errors.push({
+        row: rowNum,
+        field: "receiverPhone",
+        fieldLabel: reverseMapping.receiverPhone || "收件人电话",
+        message: "手机号需1开头11位，或座机格式如010-12345678",
+      });
+    }
+  }
+
+  // 重量 (>0)
+  if (row.weight !== undefined && row.weight !== null && row.weight !== "") {
+    const weight = Number(row.weight);
+    if (isNaN(weight) || weight <= 0) {
+      errors.push({
+        row: rowNum,
+        field: "weight",
+        fieldLabel: reverseMapping.weight || "重量",
+        message: "必须为正数",
+      });
+    }
+  }
+
+  // 件数 / 数量 (positive integer)
+  if (row.quantity !== undefined && row.quantity !== null && row.quantity !== "") {
+    const qty = Number(row.quantity);
+    if (isNaN(qty) || !Number.isInteger(qty) || qty <= 0) {
+      errors.push({
+        row: rowNum,
+        field: "quantity",
+        fieldLabel: reverseMapping.quantity || "数量",
+        message: "必须为正整数",
+      });
+    }
+  }
+
+  // 温层
+  const validTempZones = ["常温", "冷藏", "冷冻"];
+  if (row.tempZone && !validTempZones.includes(String(row.tempZone).trim())) {
+    errors.push({
+      row: rowNum,
+      field: "tempZone",
+      fieldLabel: reverseMapping.tempZone || "温层",
+      message: "不在可选范围内(常温/冷藏/冷冻)",
+    });
+  }
+
+  return errors;
+}
+
 export const validateData = (
   data: any[],
   mapping: Record<string, string>,
@@ -16,7 +145,7 @@ export const validateData = (
   const validData: any[] = [];
   const externalCodes = new Map<string, number>();
 
-  // Create reverse mapping (standard key -> original header)
+  // 创建反向映射 (standard key -> original header)
   const reverseMapping: Record<string, string> = {};
   for (const [header, key] of Object.entries(mapping)) {
     reverseMapping[key] = header;
@@ -26,100 +155,27 @@ export const validateData = (
     const rowNum = index + 1;
     const mappedRow: any = { _originalRow: index };
     
-    // Map data
+    // 映射数据
     for (const [header, key] of Object.entries(mapping)) {
       if (key) {
         mappedRow[key] = row[header];
       }
     }
 
-    // Validation
-    let hasError = false;
-
-    // 1. Required fields
-    standardFields.forEach((field) => {
-      const val = mappedRow[field.key];
-      const headerName = reverseMapping[field.key] || field.label;
-      
-      if (field.required && (val === undefined || val === null || val === "")) {
-        errors.push({
-          row: rowNum,
-          field: field.key,
-          fieldLabel: headerName,
-          message: "不能为空",
-        });
-        hasError = true;
+    // 默认补足 mappings 里的 defaultValue
+    standardFields.forEach(f => {
+      if ((mappedRow[f.key] === undefined || mappedRow[f.key] === null || mappedRow[f.key] === "")) {
+        // 查找映射中是否有默认值
+        const m = Object.entries(mapping).find(([_, key]) => key === f.key);
+        // 这里需要传递原 mappings 对象，在调用层，也可以稍后直接在页面级填充
       }
     });
 
-    // 2. Format validation
-    
-    // 手机号: 1开头11位 | 座机: 区号-号码
-    const phoneRegex = /^1[3-9]\d{9}$|^0\d{2,3}-?\d{7,8}$/;
-    const senderPhoneStr = String(mappedRow.senderPhone || '').replace(/\s+/g, '');
-    if (mappedRow.senderPhone && !phoneRegex.test(senderPhoneStr)) {
-      errors.push({
-        row: rowNum,
-        field: "senderPhone",
-        fieldLabel: reverseMapping.senderPhone || "发件人电话",
-        message: "手机号需1开头11位，或座机格式如010-12345678",
-      });
-      hasError = true;
-    }
-    const receiverPhoneStr = String(mappedRow.receiverPhone || '').replace(/\s+/g, '');
-    if (mappedRow.receiverPhone && !phoneRegex.test(receiverPhoneStr)) {
-      errors.push({
-        row: rowNum,
-        field: "receiverPhone",
-        fieldLabel: reverseMapping.receiverPhone || "收件人电话",
-        message: "手机号需1开头11位，或座机格式如010-12345678",
-      });
-      hasError = true;
-    }
+    // 运行校验
+    const rowErrors = validateRow(mappedRow, rowNum, reverseMapping);
+    errors.push(...rowErrors);
 
-    // Weight (>0)
-    if (mappedRow.weight !== undefined && mappedRow.weight !== "") {
-      const weight = Number(mappedRow.weight);
-      if (isNaN(weight) || weight <= 0) {
-        errors.push({
-          row: rowNum,
-          field: "weight",
-          fieldLabel: reverseMapping.weight || "重量",
-          message: "必须为正数",
-        });
-        hasError = true;
-      }
-      mappedRow.weight = weight;
-    }
-
-    // Quantity (positive integer)
-    if (mappedRow.quantity !== undefined && mappedRow.quantity !== "") {
-      const qty = Number(mappedRow.quantity);
-      if (isNaN(qty) || !Number.isInteger(qty) || qty <= 0) {
-        errors.push({
-          row: rowNum,
-          field: "quantity",
-          fieldLabel: reverseMapping.quantity || "件数",
-          message: "必须为正整数",
-        });
-        hasError = true;
-      }
-      mappedRow.quantity = qty;
-    }
-
-    // Temp Zone
-    const validTempZones = ["常温", "冷藏", "冷冻"];
-    if (mappedRow.tempZone && !validTempZones.includes(String(mappedRow.tempZone).trim())) {
-      errors.push({
-        row: rowNum,
-        field: "tempZone",
-        fieldLabel: reverseMapping.tempZone || "温层",
-        message: "不在可选范围内(常温/冷藏/冷冻)",
-      });
-      hasError = true;
-    }
-
-    // External Code uniqueness check
+    // 外部编码重复性检查
     if (mappedRow.externalCode) {
       const codeStr = String(mappedRow.externalCode).trim();
       mappedRow.externalCode = codeStr;
@@ -132,10 +188,17 @@ export const validateData = (
           fieldLabel: reverseMapping.externalCode || "外部编码",
           message: `与第 ${dupRow} 行重复`,
         });
-        hasError = true;
       } else {
         externalCodes.set(codeStr, rowNum);
       }
+    }
+
+    // 确保数值类型正确
+    if (mappedRow.weight !== undefined && mappedRow.weight !== "") {
+      mappedRow.weight = Number(mappedRow.weight);
+    }
+    if (mappedRow.quantity !== undefined && mappedRow.quantity !== "") {
+      mappedRow.quantity = Number(mappedRow.quantity);
     }
 
     validData.push(mappedRow);
@@ -146,7 +209,6 @@ export const validateData = (
 
 /**
  * 直接校验已经是标准字段格式的数据（用于编辑后的实时重新校验）
- * 不需要 mapping/headers，直接按 standardFields 的 key 校验
  */
 export const validateStandardData = (
   data: any[]
@@ -155,84 +217,21 @@ export const validateStandardData = (
   const validData: any[] = [];
   const externalCodes = new Map<string, number>();
 
+  // 空反向映射，直接用标准字段 label
+  const reverseMapping: Record<string, string> = {};
+  standardFields.forEach(f => {
+    reverseMapping[f.key] = f.label;
+  });
+
   data.forEach((row, index) => {
     const rowNum = index + 1;
-    // 保留原始数据，不做转换
     const mappedRow: any = { ...row };
 
-    // 1. Required fields
-    standardFields.forEach((field) => {
-      const val = mappedRow[field.key];
-      if (field.required && (val === undefined || val === null || String(val).trim() === "")) {
-        errors.push({
-          row: rowNum,
-          field: field.key,
-          fieldLabel: field.label,
-          message: "不能为空",
-        });
-      }
-    });
+    // 运行校验
+    const rowErrors = validateRow(mappedRow, rowNum, reverseMapping);
+    errors.push(...rowErrors);
 
-    // 2. Format validation
-    // 手机号: 1开头11位 | 座机: 区号-号码
-    const phoneRegex = /^1[3-9]\d{9}$|^0\d{2,3}-?\d{7,8}$/;
-    const senderPhoneStr = String(mappedRow.senderPhone || '').replace(/\s+/g, '');
-    if (mappedRow.senderPhone && !phoneRegex.test(senderPhoneStr)) {
-      errors.push({
-        row: rowNum,
-        field: "senderPhone",
-        fieldLabel: "发件人电话",
-        message: "手机号需1开头11位，或座机格式如010-12345678",
-      });
-    }
-    const receiverPhoneStr = String(mappedRow.receiverPhone || '').replace(/\s+/g, '');
-    if (mappedRow.receiverPhone && !phoneRegex.test(receiverPhoneStr)) {
-      errors.push({
-        row: rowNum,
-        field: "receiverPhone",
-        fieldLabel: "收件人电话",
-        message: "手机号需1开头11位，或座机格式如010-12345678",
-      });
-    }
-
-    // Weight (>0)
-    if (mappedRow.weight !== undefined && mappedRow.weight !== "" && mappedRow.weight !== null) {
-      const weight = Number(mappedRow.weight);
-      if (isNaN(weight) || weight <= 0) {
-        errors.push({
-          row: rowNum,
-          field: "weight",
-          fieldLabel: "重量 (kg)",
-          message: "必须为正数",
-        });
-      }
-    }
-
-    // Quantity (positive integer)
-    if (mappedRow.quantity !== undefined && mappedRow.quantity !== "" && mappedRow.quantity !== null) {
-      const qty = Number(mappedRow.quantity);
-      if (isNaN(qty) || !Number.isInteger(qty) || qty <= 0) {
-        errors.push({
-          row: rowNum,
-          field: "quantity",
-          fieldLabel: "件数",
-          message: "必须为正整数",
-        });
-      }
-    }
-
-    // Temp Zone
-    const validTempZones = ["常温", "冷藏", "冷冻"];
-    if (mappedRow.tempZone && !validTempZones.includes(String(mappedRow.tempZone).trim())) {
-      errors.push({
-        row: rowNum,
-        field: "tempZone",
-        fieldLabel: "温层",
-        message: "不在可选范围(常温/冷藏/冷冻)",
-      });
-    }
-
-    // External Code uniqueness
+    // 外部编码重复性检查
     if (mappedRow.externalCode) {
       const codeStr = String(mappedRow.externalCode).trim();
       if (externalCodes.has(codeStr)) {
