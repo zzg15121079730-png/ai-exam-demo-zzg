@@ -375,19 +375,27 @@ export default function Home() {
 
   // ========= 手动配置规则入口 =========
   const handleManualConfigure = () => {
+    const fileExt = currentFile?.name.split('.').pop()?.toLowerCase();
+    const resolvedFileType = fileExt === "pdf" ? "pdf" : fileExt === "docx" ? "word" : "excel";
     const initialRule: RuleConfig = {
       templateName: "手动配置解析规则",
-      fileType: currentFile?.name.split('.').pop()?.toLowerCase() === "pdf" ? "pdf" : 
-                currentFile?.name.split('.').pop()?.toLowerCase() === "docx" ? "word" : "excel",
-      startRowRegex: "",
-      endRowRegex: "",
-      tableRowRegex: "",
+      fileType: resolvedFileType,
       mappings: standardFields.map(f => ({
         field: f.key,
-        columnName: "",
-        defaultValue: "",
-        regex: ""
-      }))
+        column: "",
+        defaultValue: ""
+      })),
+      excel: {
+        sheets: ["*"],
+        headerRow: 1,
+        dataStartRow: 2,
+        skipRowsWith: []
+      },
+      text: {
+        splitPattern: "",
+        fields: [],
+        tableRowRegex: ""
+      }
     };
     setAiRule(initialRule);
     setRuleModalOpen(true);
@@ -425,7 +433,7 @@ export default function Home() {
         setErrors(eData);
         setStep("preview");
         message.success(`共 ${vData.length} 条数据已就绪`);
-        checkDuplicatesAsync(vData);
+        checkDbDuplicates(vData, eData);
       } else if (currentFile) {
         await executeParse(currentFile, confirmedRule);
       } else {
