@@ -961,6 +961,9 @@ export namespace Prisma {
     receiverName: string | null
     receiverPhone: string | null
     receiverAddress: string | null
+    skuCode: string | null
+    skuName: string | null
+    skuSpec: string | null
     weight: number | null
     quantity: number | null
     tempZone: string | null
@@ -980,6 +983,9 @@ export namespace Prisma {
     receiverName: string | null
     receiverPhone: string | null
     receiverAddress: string | null
+    skuCode: string | null
+    skuName: string | null
+    skuSpec: string | null
     weight: number | null
     quantity: number | null
     tempZone: string | null
@@ -999,6 +1005,9 @@ export namespace Prisma {
     receiverName: number
     receiverPhone: number
     receiverAddress: number
+    skuCode: number
+    skuName: number
+    skuSpec: number
     weight: number
     quantity: number
     tempZone: number
@@ -1030,6 +1039,9 @@ export namespace Prisma {
     receiverName?: true
     receiverPhone?: true
     receiverAddress?: true
+    skuCode?: true
+    skuName?: true
+    skuSpec?: true
     weight?: true
     quantity?: true
     tempZone?: true
@@ -1049,6 +1061,9 @@ export namespace Prisma {
     receiverName?: true
     receiverPhone?: true
     receiverAddress?: true
+    skuCode?: true
+    skuName?: true
+    skuSpec?: true
     weight?: true
     quantity?: true
     tempZone?: true
@@ -1068,6 +1083,9 @@ export namespace Prisma {
     receiverName?: true
     receiverPhone?: true
     receiverAddress?: true
+    skuCode?: true
+    skuName?: true
+    skuSpec?: true
     weight?: true
     quantity?: true
     tempZone?: true
@@ -1174,6 +1192,9 @@ export namespace Prisma {
     receiverName: string
     receiverPhone: string
     receiverAddress: string
+    skuCode: string | null
+    skuName: string | null
+    skuSpec: string | null
     weight: number
     quantity: number
     tempZone: string
@@ -1212,6 +1233,9 @@ export namespace Prisma {
     receiverName?: boolean
     receiverPhone?: boolean
     receiverAddress?: boolean
+    skuCode?: boolean
+    skuName?: boolean
+    skuSpec?: boolean
     weight?: boolean
     quantity?: boolean
     tempZone?: boolean
@@ -1231,6 +1255,9 @@ export namespace Prisma {
     receiverName?: boolean
     receiverPhone?: boolean
     receiverAddress?: boolean
+    skuCode?: boolean
+    skuName?: boolean
+    skuSpec?: boolean
     weight?: boolean
     quantity?: boolean
     tempZone?: boolean
@@ -1250,6 +1277,9 @@ export namespace Prisma {
     receiverName?: boolean
     receiverPhone?: boolean
     receiverAddress?: boolean
+    skuCode?: boolean
+    skuName?: boolean
+    skuSpec?: boolean
     weight?: boolean
     quantity?: boolean
     tempZone?: boolean
@@ -1273,6 +1303,9 @@ export namespace Prisma {
       receiverName: string
       receiverPhone: string
       receiverAddress: string
+      skuCode: string | null
+      skuName: string | null
+      skuSpec: string | null
       weight: number
       quantity: number
       tempZone: string
@@ -1682,6 +1715,9 @@ export namespace Prisma {
     readonly receiverName: FieldRef<"Waybill", 'String'>
     readonly receiverPhone: FieldRef<"Waybill", 'String'>
     readonly receiverAddress: FieldRef<"Waybill", 'String'>
+    readonly skuCode: FieldRef<"Waybill", 'String'>
+    readonly skuName: FieldRef<"Waybill", 'String'>
+    readonly skuSpec: FieldRef<"Waybill", 'String'>
     readonly weight: FieldRef<"Waybill", 'Float'>
     readonly quantity: FieldRef<"Waybill", 'Int'>
     readonly tempZone: FieldRef<"Waybill", 'String'>
@@ -2891,6 +2927,9 @@ export namespace Prisma {
     receiverName: 'receiverName',
     receiverPhone: 'receiverPhone',
     receiverAddress: 'receiverAddress',
+    skuCode: 'skuCode',
+    skuName: 'skuName',
+    skuSpec: 'skuSpec',
     weight: 'weight',
     quantity: 'quantity',
     tempZone: 'tempZone',
@@ -3016,6 +3055,9 @@ export namespace Prisma {
     receiverName?: StringFilter<"Waybill"> | string
     receiverPhone?: StringFilter<"Waybill"> | string
     receiverAddress?: StringFilter<"Waybill"> | string
+    skuCode?: StringNullableFilter<"Waybill"> | string | null
+    skuName?: StringNullableFilter<"Waybill"> | string | null
+    skuSpec?: StringNullableFilter<"Waybill"> | string | null
     weight?: FloatFilter<"Waybill"> | number
     quantity?: IntFilter<"Waybill"> | number
     tempZone?: StringFilter<"Waybill"> | string
@@ -3035,6 +3077,9 @@ export namespace Prisma {
     receiverName?: SortOrder
     receiverPhone?: SortOrder
     receiverAddress?: SortOrder
+    skuCode?: SortOrderInput | SortOrder
+    skuName?: SortOrderInput | SortOrder
+    skuSpec?: SortOrderInput | SortOrder
     weight?: SortOrder
     quantity?: SortOrder
     tempZone?: SortOrder
@@ -3057,6 +3102,9 @@ export namespace Prisma {
     receiverName?: StringFilter<"Waybill"> | string
     receiverPhone?: StringFilter<"Waybill"> | string
     receiverAddress?: StringFilter<"Waybill"> | string
+    skuCode?: StringNullableFilter<"Waybill"> | string | null
+    skuName?: StringNullableFilter<"Waybill"> | string | null
+    skuSpec?: StringNullableFilter<"Waybill"> | string | null
     weight?: FloatFilter<"Waybill"> | number
     quantity?: IntFilter<"Waybill"> | number
     tempZone?: StringFilter<"Waybill"> | string
@@ -3076,6 +3124,9 @@ export namespace Prisma {
     receiverName?: SortOrder
     receiverPhone?: SortOrder
     receiverAddress?: SortOrder
+    skuCode?: SortOrderInput | SortOrder
+    skuName?: SortOrderInput | SortOrder
+    skuSpec?: SortOrderInput | SortOrder
     weight?: SortOrder
     quantity?: SortOrder
     tempZone?: SortOrder
@@ -3103,6 +3154,9 @@ export namespace Prisma {
     receiverName?: StringWithAggregatesFilter<"Waybill"> | string
     receiverPhone?: StringWithAggregatesFilter<"Waybill"> | string
     receiverAddress?: StringWithAggregatesFilter<"Waybill"> | string
+    skuCode?: StringNullableWithAggregatesFilter<"Waybill"> | string | null
+    skuName?: StringNullableWithAggregatesFilter<"Waybill"> | string | null
+    skuSpec?: StringNullableWithAggregatesFilter<"Waybill"> | string | null
     weight?: FloatWithAggregatesFilter<"Waybill"> | number
     quantity?: IntWithAggregatesFilter<"Waybill"> | number
     tempZone?: StringWithAggregatesFilter<"Waybill"> | string
@@ -3179,6 +3233,9 @@ export namespace Prisma {
     receiverName: string
     receiverPhone: string
     receiverAddress: string
+    skuCode?: string | null
+    skuName?: string | null
+    skuSpec?: string | null
     weight: number
     quantity: number
     tempZone: string
@@ -3198,6 +3255,9 @@ export namespace Prisma {
     receiverName: string
     receiverPhone: string
     receiverAddress: string
+    skuCode?: string | null
+    skuName?: string | null
+    skuSpec?: string | null
     weight: number
     quantity: number
     tempZone: string
@@ -3217,6 +3277,9 @@ export namespace Prisma {
     receiverName?: StringFieldUpdateOperationsInput | string
     receiverPhone?: StringFieldUpdateOperationsInput | string
     receiverAddress?: StringFieldUpdateOperationsInput | string
+    skuCode?: NullableStringFieldUpdateOperationsInput | string | null
+    skuName?: NullableStringFieldUpdateOperationsInput | string | null
+    skuSpec?: NullableStringFieldUpdateOperationsInput | string | null
     weight?: FloatFieldUpdateOperationsInput | number
     quantity?: IntFieldUpdateOperationsInput | number
     tempZone?: StringFieldUpdateOperationsInput | string
@@ -3236,6 +3299,9 @@ export namespace Prisma {
     receiverName?: StringFieldUpdateOperationsInput | string
     receiverPhone?: StringFieldUpdateOperationsInput | string
     receiverAddress?: StringFieldUpdateOperationsInput | string
+    skuCode?: NullableStringFieldUpdateOperationsInput | string | null
+    skuName?: NullableStringFieldUpdateOperationsInput | string | null
+    skuSpec?: NullableStringFieldUpdateOperationsInput | string | null
     weight?: FloatFieldUpdateOperationsInput | number
     quantity?: IntFieldUpdateOperationsInput | number
     tempZone?: StringFieldUpdateOperationsInput | string
@@ -3255,6 +3321,9 @@ export namespace Prisma {
     receiverName: string
     receiverPhone: string
     receiverAddress: string
+    skuCode?: string | null
+    skuName?: string | null
+    skuSpec?: string | null
     weight: number
     quantity: number
     tempZone: string
@@ -3274,6 +3343,9 @@ export namespace Prisma {
     receiverName?: StringFieldUpdateOperationsInput | string
     receiverPhone?: StringFieldUpdateOperationsInput | string
     receiverAddress?: StringFieldUpdateOperationsInput | string
+    skuCode?: NullableStringFieldUpdateOperationsInput | string | null
+    skuName?: NullableStringFieldUpdateOperationsInput | string | null
+    skuSpec?: NullableStringFieldUpdateOperationsInput | string | null
     weight?: FloatFieldUpdateOperationsInput | number
     quantity?: IntFieldUpdateOperationsInput | number
     tempZone?: StringFieldUpdateOperationsInput | string
@@ -3293,6 +3365,9 @@ export namespace Prisma {
     receiverName?: StringFieldUpdateOperationsInput | string
     receiverPhone?: StringFieldUpdateOperationsInput | string
     receiverAddress?: StringFieldUpdateOperationsInput | string
+    skuCode?: NullableStringFieldUpdateOperationsInput | string | null
+    skuName?: NullableStringFieldUpdateOperationsInput | string | null
+    skuSpec?: NullableStringFieldUpdateOperationsInput | string | null
     weight?: FloatFieldUpdateOperationsInput | number
     quantity?: IntFieldUpdateOperationsInput | number
     tempZone?: StringFieldUpdateOperationsInput | string
@@ -3443,6 +3518,9 @@ export namespace Prisma {
     receiverName?: SortOrder
     receiverPhone?: SortOrder
     receiverAddress?: SortOrder
+    skuCode?: SortOrder
+    skuName?: SortOrder
+    skuSpec?: SortOrder
     weight?: SortOrder
     quantity?: SortOrder
     tempZone?: SortOrder
@@ -3467,6 +3545,9 @@ export namespace Prisma {
     receiverName?: SortOrder
     receiverPhone?: SortOrder
     receiverAddress?: SortOrder
+    skuCode?: SortOrder
+    skuName?: SortOrder
+    skuSpec?: SortOrder
     weight?: SortOrder
     quantity?: SortOrder
     tempZone?: SortOrder
@@ -3486,6 +3567,9 @@ export namespace Prisma {
     receiverName?: SortOrder
     receiverPhone?: SortOrder
     receiverAddress?: SortOrder
+    skuCode?: SortOrder
+    skuName?: SortOrder
+    skuSpec?: SortOrder
     weight?: SortOrder
     quantity?: SortOrder
     tempZone?: SortOrder

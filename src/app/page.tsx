@@ -10,7 +10,8 @@ import type { Dayjs } from 'dayjs';
 import {
   UploadOutlined, FileTextOutlined, CheckCircleOutlined,
   SyncOutlined, SearchOutlined, ReloadOutlined, ExportOutlined,
-  SettingOutlined, RobotOutlined, ThunderboltOutlined, EyeOutlined
+  SettingOutlined, RobotOutlined, ThunderboltOutlined, EyeOutlined,
+  DeleteOutlined, CopyOutlined, EditOutlined
 } from "@ant-design/icons";
 import { UploadZone } from "@/components/UploadZone";
 import { DataGrid } from "@/components/DataGrid";
@@ -674,9 +675,71 @@ export default function Home() {
                   onChange={setSelectedRuleId}
                   options={[
                     { label: "✨ 新建解析规则 (通过大模型 AI 预处理分析)", value: "ai-detect" },
-                    ...rulesList.map(r => ({ label: `📋 [已存模板] ${r.templateName}`, value: r.id }))
+                    ...rulesList.map(r => ({ label: `📋 [已存模板] ${r.templateName || r.fingerprint}`, value: r.id }))
                   ]}
                 />
+                {/* 规则管理操作按钮 */}
+                {selectedRuleId && selectedRuleId !== "ai-detect" && (
+                  <Space style={{ marginTop: 8 }}>
+                    <Button 
+                      size="small" type="link" danger
+                      icon={<DeleteOutlined />}
+                      onClick={async () => {
+                        const rule = rulesList.find(r => r.id === selectedRuleId);
+                        if (!rule) return;
+                        Modal.confirm({
+                          title: "确认删除该解析规则？",
+                          content: `规则名称：${rule.templateName || rule.fingerprint}`,
+                          okText: "删除",
+                          okButtonProps: { danger: true },
+                          onOk: async () => {
+                            try {
+                              await fetch(`/api/mapping?id=${rule.id}`, { method: "DELETE" });
+                              message.success("规则已删除");
+                              setSelectedRuleId("ai-detect");
+                              fetchRules();
+                            } catch { message.error("删除失败"); }
+                          }
+                        });
+                      }}
+                    >删除规则</Button>
+                    <Button 
+                      size="small" type="link"
+                      icon={<CopyOutlined />}
+                      onClick={async () => {
+                        const rule = rulesList.find(r => r.id === selectedRuleId);
+                        if (!rule) return;
+                        try {
+                          const mappings = typeof rule.mappings === 'string' ? JSON.parse(rule.mappings) : rule.mappings;
+                          await fetch("/api/mapping", {
+                            method: "POST",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({
+                              fingerprint: `${rule.fingerprint}-copy-${Date.now()}`,
+                              mappings,
+                              templateName: `${rule.templateName || "规则"} (副本)`
+                            })
+                          });
+                          message.success("规则已复制");
+                          fetchRules();
+                        } catch { message.error("复制失败"); }
+                      }}
+                    >复制规则</Button>
+                    <Button 
+                      size="small" type="link"
+                      icon={<EditOutlined />}
+                      onClick={() => {
+                        const rule = rulesList.find(r => r.id === selectedRuleId);
+                        if (!rule) return;
+                        try {
+                          const parsed = typeof rule.mappings === 'string' ? JSON.parse(rule.mappings) : rule.mappings;
+                          setAiRule(parsed);
+                          setRuleModalOpen(true);
+                        } catch { message.error("规则格式解析失败"); }
+                      }}
+                    >编辑规则</Button>
+                  </Space>
+                )}
               </div>
 
               <UploadZone onFileSelect={handleFileSelect} />

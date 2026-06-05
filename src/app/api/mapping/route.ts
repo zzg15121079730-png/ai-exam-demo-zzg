@@ -78,3 +78,33 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }
+
+export async function DELETE(request: Request) {
+  try {
+    const { searchParams } = new URL(request.url);
+    const id = searchParams.get("id");
+    const fingerprint = searchParams.get("fingerprint");
+
+    if (!id && !fingerprint) {
+      return NextResponse.json({ error: "Missing id or fingerprint" }, { status: 400 });
+    }
+
+    try {
+      if (id) {
+        await prisma.mappingRule.delete({ where: { id } });
+      } else if (fingerprint) {
+        await prisma.mappingRule.delete({ where: { fingerprint } });
+      }
+      // 同步清理内存
+      memoryRules = memoryRules.filter(r => r.id !== id && r.fingerprint !== fingerprint);
+      return NextResponse.json({ success: true });
+    } catch (dbErr) {
+      console.warn("Database delete failed, removing from memory:", dbErr);
+      memoryRules = memoryRules.filter(r => r.id !== id && r.fingerprint !== fingerprint);
+      return NextResponse.json({ success: true, isFallback: true });
+    }
+  } catch (error) {
+    console.error("Error deleting mapping rule:", error);
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+  }
+}

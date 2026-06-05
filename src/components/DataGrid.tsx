@@ -339,8 +339,8 @@ export const DataGrid: React.FC<DataGridProps> = ({
       <Table
         columns={columns}
         dataSource={localData.map((d, i) => ({ ...d, key: i }))}
-        pagination={pagination}
-        scroll={{ x: 1600, y: 450 }}
+        pagination={false}
+        scroll={{ x: 1600, y: 500 }}
         size="small"
         bordered
         virtual

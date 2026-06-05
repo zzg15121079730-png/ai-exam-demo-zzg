@@ -18,6 +18,9 @@ model Waybill {
   receiverName    String   @map("receiver_name")
   receiverPhone   String   @map("receiver_phone")
   receiverAddress String   @map("receiver_address")
+  skuCode         String?  @map("sku_code")
+  skuName         String?  @map("sku_name")
+  skuSpec         String?  @map("sku_spec")
   weight          Float
   quantity        Int
   tempZone        String   @map("temp_zone")
