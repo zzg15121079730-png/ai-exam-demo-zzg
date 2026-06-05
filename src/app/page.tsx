@@ -827,7 +827,7 @@ export default function Home() {
           width={1400}
           maskClosable={false}
           keyboard={step !== "submitting"}
-          destroyOnClose={false}
+          destroyOnHidden={false}
           styles={{ body: { maxHeight: '72vh', overflow: 'auto' } }}
           footer={
             step === "done" ? (
