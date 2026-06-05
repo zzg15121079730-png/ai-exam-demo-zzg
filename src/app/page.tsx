@@ -600,13 +600,6 @@ export default function Home() {
     { title: 'SKU编码', dataIndex: 'skuCode', width: 120 },
     { title: 'SKU名称', dataIndex: 'skuName', width: 140, ellipsis: true },
     { title: '数量', dataIndex: 'quantity', width: 70, align: 'center' as const },
-    { title: '重量', dataIndex: 'weight', width: 80, align: 'center' as const },
-    { title: '温层', dataIndex: 'tempArea', width: 70, align: 'center' as const,
-      render: (text: string) => {
-        const colorMap: Record<string, string> = { '常温': 'default', '冷藏': 'blue', '冷冻': 'cyan' };
-        return <Tag color={colorMap[text] || 'default'}>{text}</Tag>;
-      }
-    },
     { title: '导入时间', dataIndex: 'createdAt', width: 160,
       render: (text: string) => text ? new Date(text).toLocaleString('zh-CN') : '-'
     },
@@ -994,8 +987,6 @@ export default function Home() {
                         {f.key === 'skuCode' && 'SKU 编码，用于区分出库商品'}
                         {f.key === 'skuName' && 'SKU 名称，出库商品明细'}
                         {f.key === 'quantity' && '发货件数，必须为正整数'}
-                        {f.key === 'weight' && '货物重量(kg)，必须为正数'}
-                        {f.key === 'tempArea' && '配送温层，可选值：常温/冷藏/冷冻'}
                         {f.key === 'skuSpec' && '物品规格型号描述'}
                         {f.key === 'remark' && '其他附言备注信息'}
                       </td>

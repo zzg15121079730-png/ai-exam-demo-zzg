@@ -59,33 +59,6 @@ function validateRow(row: any, rowNum: number, reverseMapping: Record<string, st
     }
   }
 
-  // 重量 (正数，考试要求"重量正数")
-  if (row.weight !== undefined && row.weight !== null && row.weight !== "") {
-    const w = Number(row.weight);
-    if (isNaN(w) || w <= 0) {
-      errors.push({
-        row: rowNum,
-        field: "weight",
-        fieldLabel: reverseMapping.weight || "重量",
-        message: "必须为正数",
-      });
-    }
-  }
-
-  // 温层 (可选值：常温/冷藏/冷冻)
-  if (row.tempArea !== undefined && row.tempArea !== null && row.tempArea !== "") {
-    const temp = String(row.tempArea).trim();
-    const allowed = ["常温", "冷藏", "冷冻"];
-    if (!allowed.includes(temp)) {
-      errors.push({
-        row: rowNum,
-        field: "tempArea",
-        fieldLabel: reverseMapping.tempArea || "温层",
-        message: "值不在范围内(常温/冷藏/冷冻)",
-      });
-    }
-  }
-
   return errors;
 }
 
@@ -145,9 +118,6 @@ export const validateData = (
     }
 
     // 确保数值类型正确
-    if (mappedRow.weight !== undefined && mappedRow.weight !== "") {
-      mappedRow.weight = Number(mappedRow.weight);
-    }
     if (mappedRow.quantity !== undefined && mappedRow.quantity !== "") {
       mappedRow.quantity = Number(mappedRow.quantity);
     }

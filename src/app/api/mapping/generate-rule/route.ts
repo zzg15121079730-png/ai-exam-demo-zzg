@@ -116,23 +116,34 @@ export async function POST(request: Request) {
 }
 \`\`\`
 
-### 规则：
+### 重要规则：
 1. 回答必须只有JSON，包在 \`\`\`json ... \`\`\` 中
 2. 仔细分析样本前10行，找出真正的表头行(headerRow)
 3. 只用以上10个字段，mappings中的column必须与实际表头完全一致
 4. 根据文件特征启用对应的特殊处理(footerExtraction/rowAggregation/matrixPivot/cardLayout)
-5. 每Sheet底部如有横向排列的收货人信息，用footerExtraction提取
-6. mappings中isGuess为true表示AI推测的映射`;
+5. 每Sheet底部如有横向排列的收货人信息(如"联系人"、"联系电话"、"收货地址"等)，必须用footerExtraction提取
+6. mappings中isGuess为true表示AI推测的映射
 
-    // 裁剪样本
+### 调拨单特殊模式(极其常见，务必识别)：
+- 调拨单的收件人/电话/地址/门店通常不在数据表头中，而是在表格下方或上方以"关键字: 值"的格式单独出现
+- 常见关键词举例："收货门店"、"调入门店"、"联系人"、"联系电话"、"收货地址"、"收件人"、"收件电话"
+- 这种情况必须启用 footerExtraction（或 headerExtraction），用 keyword-offset 方式提取
+- 如果表头中完全没有收件人/电话相关列，一定要在样本的尾部行中搜索这些关键字`;
+
+    // 裁剪样本 — 前15行(表头+数据) + 后10行(尾部收货信息) 确保AI能看到全貌
     let trimmedSample = excelSample;
     if (fileType === "excel" && excelSample?.sheets) {
       trimmedSample = {
         ...excelSample,
-        sheets: excelSample.sheets.map((s: any) => ({
-          ...s,
-          aoa: (s.aoa || []).slice(0, 20) // 发更多行给AI看清结构
-        }))
+        sheets: excelSample.sheets.map((s: any) => {
+          const aoa = s.aoa || [];
+          const head = aoa.slice(0, 15);
+          const tail = aoa.slice(Math.max(15, aoa.length - 10));
+          const combined = head.length + tail.length < aoa.length
+            ? [...head, ["... 中间数据省略 ..."], ...tail]
+            : aoa.slice(0, 30);
+          return { ...s, aoa: combined, totalRows: aoa.length };
+        })
       };
     }
 
@@ -206,10 +217,10 @@ function generateHeuristicRule(fileType: string, excelSample: any, _sampleText: 
   // 10个标准字段的别名库
   const fields = [
     { key: "externalCode", aliases: ["订单号", "单号", "编号", "外部编码", "配送单号", "配送汇总单号", "客户单号"] },
-    { key: "receiverStore", aliases: ["门店", "收货门店", "机构", "门店名称", "收货单位", "调入门店", "目标门店", "收货机构"] },
-    { key: "receiverName", aliases: ["收货人", "收件人", "姓名", "收货联系人", "联系人"] },
-    { key: "receiverPhone", aliases: ["电话", "手机", "联系方式", "联系电话", "收货电话"] },
-    { key: "receiverAddress", aliases: ["地址", "收货地址", "收件地址", "配送地址"] },
+    { key: "receiverStore", aliases: ["门店", "收货门店", "机构", "门店名称", "收货单位", "调入门店", "目标门店", "收货机构", "调拨门店", "到货门店", "收货方"] },
+    { key: "receiverName", aliases: ["收货人", "收件人", "姓名", "收货联系人", "联系人", "收货方联系人", "到货联系人", "提货人"] },
+    { key: "receiverPhone", aliases: ["电话", "手机", "联系方式", "联系电话", "收货电话", "收件电话", "收货方电话", "到货电话"] },
+    { key: "receiverAddress", aliases: ["地址", "收货地址", "收件地址", "配送地址", "到货地址", "收货方地址"] },
     { key: "skuCode", aliases: ["物品编码", "商品编码", "编码", "SKU", "SKU编码", "商品货号", "SKU条码", "外部商品编码"] },
     { key: "skuName", aliases: ["物品名称", "商品名称", "名称", "品名", "SKU名称"] },
     { key: "quantity", aliases: ["数量", "发货数量", "件数", "出库数量", "实发数量", "发件数"] },

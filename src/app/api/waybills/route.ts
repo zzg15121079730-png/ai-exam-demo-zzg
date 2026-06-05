@@ -60,8 +60,6 @@ export async function POST(request: Request) {
       skuCode: item.skuCode ? String(item.skuCode) : null,
       skuName: item.skuName ? String(item.skuName) : null,
       quantity: Math.round(Number(item.quantity) || 0),
-      weight: item.weight ? Number(item.weight) : null,
-      tempArea: item.tempArea ? String(item.tempArea) : null,
       skuSpec: item.skuSpec ? String(item.skuSpec) : null,
       remark: item.remark ? String(item.remark) : null,
       batchId,

@@ -67,22 +67,11 @@ export default function HistoryPage() {
       width: 200,
     },
     {
-      title: '重量(kg)',
-      dataIndex: 'weight',
-      key: 'weight',
-      render: (text: number) => text || '-',
-      width: 90,
-    },
-    {
-      title: '温层 / 重量 / 件数',
-      key: 'goodsInfo',
-      render: (_: any, record: any) => (
-        <Space>
-          <Tag color="blue">{record.tempArea}</Tag>
-          <span className="text-sm text-gray-500">{record.quantity}件</span>
-        </Space>
-      ),
-      width: 200,
+      title: '件数',
+      dataIndex: 'quantity',
+      key: 'quantity',
+      render: (text: number) => text ? `${text}件` : '-',
+      width: 80,
     },
     {
       title: '导入时间',

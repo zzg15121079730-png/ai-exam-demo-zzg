@@ -85,15 +85,13 @@ export const parseExcelFile = async (file: File): Promise<ParsedExcel> => {
 
 export const standardFields = [
   { key: "externalCode", label: "外部编码", aliases: ["客户单号", "订单号", "外部订单号", "外部单号", "外部编号", "订单编号", "单号", "配送单号", "配送汇总单号", "配送汇总单号*", "配送单号*"], required: false },
-  { key: "receiverStore", label: "收货门店", aliases: ["收货门店", "收货门店名称", "门店名称", "门店名", "收货门店/机构名称", "调拨门店", "收货机构", "调入门店", "目标门店"], required: false },
-  { key: "receiverName", label: "收件人姓名", aliases: ["收货人", "收件人", "收货人姓名", "收件人姓名", "收货联系人", "联系人"], required: true },
-  { key: "receiverPhone", label: "收件人电话", aliases: ["收货电话", "收件电话", "收件人联系方式", "收货人电话", "收件人电话", "联系电话"], required: true },
-  { key: "receiverAddress", label: "收件人地址", aliases: ["收货地址", "收件地址", "收货人地址", "收件人地址", "配送地址"], required: true },
+  { key: "receiverStore", label: "收货门店", aliases: ["收货门店", "收货门店名称", "门店名称", "门店名", "收货门店/机构名称", "调拨门店", "收货机构", "调入门店", "目标门店", "到货门店", "收货方", "收货单位"], required: false },
+  { key: "receiverName", label: "收件人姓名", aliases: ["收货人", "收件人", "收货人姓名", "收件人姓名", "收货联系人", "联系人", "收货方联系人", "到货联系人", "提货人"], required: true },
+  { key: "receiverPhone", label: "收件人电话", aliases: ["收货电话", "收件电话", "收件人联系方式", "收货人电话", "收件人电话", "联系电话", "收货方电话", "到货电话"], required: true },
+  { key: "receiverAddress", label: "收件人地址", aliases: ["收货地址", "收件地址", "收货人地址", "收件人地址", "配送地址", "到货地址", "收货方地址"], required: true },
   { key: "skuCode", label: "SKU物品编码", aliases: ["物品编码", "物品编码*", "SKU物品编码", "SKU编码", "商品编码", "物品代码", "SKU条码", "外部商品编码", "商品货号"], required: true },
   { key: "skuName", label: "SKU物品名称", aliases: ["物品名称", "物品名称*", "SKU物品名称", "SKU名称", "商品名称", "品名"], required: true },
   { key: "quantity", label: "SKU发货数量", aliases: ["发货数量", "发货数量*", "出库数量", "数量", "件数", "实发数量", "发件数", "发货件数"], required: true },
-  { key: "weight", label: "重量", aliases: ["重量", "毛重", "净重", "单重", "重量(kg)", "重量（kg）"], required: true },
-  { key: "tempArea", label: "温层", aliases: ["温层", "温度", "储存条件", "配送温层", "保存条件", "温区"], required: true },
   { key: "skuSpec", label: "SKU规格型号", aliases: ["规格型号", "规格", "型号", "商品规格", "物品规格"], required: false },
   { key: "remark", label: "备注", aliases: ["备注", "备注信息", "附言", "说明", "附加说明"], required: false },
 ];
