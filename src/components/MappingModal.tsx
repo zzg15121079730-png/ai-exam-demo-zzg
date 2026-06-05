@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from "react";
 import { 
   Modal, Form, Input, Select, Switch, Row, Col, Table, 
-  Button, Space, Tag, Divider, Card, message, Alert, Tabs
+  Button, Space, Tag, Divider, Card, message, Alert, Tabs, AutoComplete
 } from "antd";
 import { 
   PlayCircleOutlined, SaveOutlined, WarningOutlined,
@@ -16,6 +16,7 @@ interface MappingModalProps {
   isOpen: boolean;
   file: File | null;
   initialRule: RuleConfig | null;
+  sourceColumns?: string[];
   onConfirm: (rule: RuleConfig) => void;
   onCancel: () => void;
 }
@@ -24,6 +25,7 @@ export const MappingModal: React.FC<MappingModalProps> = ({
   isOpen,
   file,
   initialRule,
+  sourceColumns = [],
   onConfirm,
   onCancel,
 }) => {
@@ -258,11 +260,15 @@ export const MappingModal: React.FC<MappingModalProps> = ({
                     <div style={{ fontSize: 11, color: '#8c8c8c', fontWeight: 'normal' }}>{field.key}</div>
                   </td>
                   <td style={{ padding: '8px' }}>
-                    <Input 
-                      placeholder="例如: 订单号 / 物品编码" 
+                    <AutoComplete
+                      placeholder="选择或输入源列名" 
                       value={mapping.column || ""} 
-                      onChange={e => handleMappingChange(field.key, "column", e.target.value)}
-                      style={{ borderColor: isGuess ? '#87e8de' : undefined }}
+                      onChange={(val) => handleMappingChange(field.key, "column", val)}
+                      options={sourceColumns.map(c => ({ value: c, label: c }))}
+                      style={{ width: '100%', borderColor: isGuess ? '#87e8de' : undefined }}
+                      filterOption={(inputValue, option) =>
+                        (option?.label as string)?.toLowerCase().includes(inputValue.toLowerCase()) ?? false
+                      }
                     />
                   </td>
                   <td style={{ padding: '8px' }}>

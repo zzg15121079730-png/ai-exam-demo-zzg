@@ -36,6 +36,7 @@ export default function Home() {
   const [ruleModalOpen, setRuleModalOpen] = useState(false);
   const [currentFile, setCurrentFile] = useState<File | null>(null);
   const [aiRule, setAiRule] = useState<RuleConfig | null>(null);
+  const [fileColumns, setFileColumns] = useState<string[]>([]);
 
   // AI 配置相关
   const [aiConfig, setAiConfig] = useState({
@@ -170,6 +171,21 @@ export default function Home() {
         }
         
         const analyzeData = await analyzeRes.json();
+
+        // 提取 Excel 原始表头列名，供 MappingModal 下拉选择
+        if (analyzeData.excelSample?.sheets?.[0]?.aoa) {
+          const aoa = analyzeData.excelSample.sheets[0].aoa;
+          // 找到第一个非空行作为表头（通常是第2行，第1行可能是说明文字）
+          let headerRow = aoa[0] || [];
+          for (let i = 0; i < Math.min(aoa.length, 5); i++) {
+            const row = aoa[i] || [];
+            const nonEmpty = row.filter((c: any) => c !== "" && c != null).length;
+            if (nonEmpty >= 3) { headerRow = row; break; }
+          }
+          setFileColumns(headerRow.filter((c: any) => c !== "" && c != null).map(String));
+        } else {
+          setFileColumns([]);
+        }
         
         // 2. 调用大模型（或启发式回退）生成推荐规则
         setProgress({ percent: 50, current: 0, total: 100, label: "大模型正在智能推理匹配规则..." });
@@ -1036,6 +1052,7 @@ export default function Home() {
           isOpen={ruleModalOpen}
           file={currentFile}
           initialRule={aiRule}
+          sourceColumns={fileColumns}
           onConfirm={handleRuleModalConfirm}
           onCancel={() => {
             setRuleModalOpen(false);
