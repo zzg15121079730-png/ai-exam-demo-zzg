@@ -136,49 +136,55 @@ function extractFooterInfo(aoa: any[][], startRow: number): Record<string, strin
       const cellStr = String(row[c] || '').trim();
       if (!cellStr) continue;
       
-      // 1. 检测 "关键字：值" 在同一个格子里
-      const kvRegex = new RegExp(`^(${allKeywords})[：:]\\s*(.+)`, "i");
-      const kvMatch = cellStr.match(kvRegex);
-      if (kvMatch) {
-        const key = kvMatch[1];
-        const val = kvMatch[2].trim();
-        
-        // 如果提取的值是类似 "▶ 调拨记录" 的指示符或者包含大量特殊符号，不作为最终值
-        if (val && !val.startsWith("▶")) {
-          if (new RegExp(codeKeywords, "i").test(key) && !meta.externalCode) meta.externalCode = val;
-          else if (new RegExp(storeKeywords, "i").test(key) && !meta.receiverStore) meta.receiverStore = val;
-          else if (new RegExp(nameKeywords, "i").test(key) && !meta.receiverName) meta.receiverName = val;
-          else if (new RegExp(phoneKeywords, "i").test(key) && !meta.receiverPhone) meta.receiverPhone = val;
-          else if (new RegExp(addressKeywords, "i").test(key) && !meta.receiverAddress) meta.receiverAddress = val;
-        }
-        continue;
-      }
+      // 切分单格内合并的多键值对（例如用 |、丨 或双空格以上分隔的情况）
+      const subParts = cellStr.split(/[|丨]|\s{2,}/).map(p => p.trim()).filter(Boolean);
       
-      // 2. 检测 "关键字：" 或 "关键字" 在一个格子，值在后面临近几个格子（最多往右找 3 格，防止跨越太远）
-      const labelRegex = new RegExp(`^(${allKeywords})[：:]?\\s*$`, "i");
-      const labelMatch = cellStr.match(labelRegex);
-      if (labelMatch) {
-        const key = labelMatch[1];
-        let foundVal = "";
-        
-        for (let offset = 1; offset <= 3; offset++) {
-          if (c + offset < row.length) {
-            const tempVal = String(row[c + offset] || '').trim();
-            if (tempVal && !new RegExp(`^(${allKeywords})`).test(tempVal)) {
-              foundVal = tempVal;
-              break;
-            }
+      subParts.forEach(part => {
+        // 1. 检测 "关键字：值" 在同一个格子里
+        const kvRegex = new RegExp(`^(${allKeywords})[：:]\\s*(.+)`, "i");
+        const kvMatch = part.match(kvRegex);
+        if (kvMatch) {
+          const key = kvMatch[1];
+          const val = kvMatch[2].trim();
+          
+          // 如果提取的值是类似 "▶ 调拨记录" 的指示符或者包含大量特殊符号，不作为最终值
+          if (val && !val.startsWith("▶")) {
+            if (new RegExp(codeKeywords, "i").test(key) && !meta.externalCode) meta.externalCode = val;
+            else if (new RegExp(storeKeywords, "i").test(key) && !meta.receiverStore) meta.receiverStore = val;
+            else if (new RegExp(nameKeywords, "i").test(key) && !meta.receiverName) meta.receiverName = val;
+            else if (new RegExp(phoneKeywords, "i").test(key) && !meta.receiverPhone) meta.receiverPhone = val;
+            else if (new RegExp(addressKeywords, "i").test(key) && !meta.receiverAddress) meta.receiverAddress = val;
           }
         }
         
-        if (foundVal && !foundVal.startsWith("▶")) {
-          if (new RegExp(codeKeywords, "i").test(key) && !meta.externalCode) meta.externalCode = foundVal;
-          else if (new RegExp(storeKeywords, "i").test(key) && !meta.receiverStore) meta.receiverStore = foundVal;
-          else if (new RegExp(nameKeywords, "i").test(key) && !meta.receiverName) meta.receiverName = foundVal;
-          else if (new RegExp(phoneKeywords, "i").test(key) && !meta.receiverPhone) meta.receiverPhone = foundVal;
-          else if (new RegExp(addressKeywords, "i").test(key) && !meta.receiverAddress) meta.receiverAddress = foundVal;
+        // 2. 检测 "关键字：" 或 "关键字" 在一个格子，值在后面临近几个格子（仅当 subParts 只有一个元素时有效，防止内部错位）
+        if (subParts.length === 1) {
+          const labelRegex = new RegExp(`^(${allKeywords})[：:]?\\s*$`, "i");
+          const labelMatch = part.match(labelRegex);
+          if (labelMatch) {
+            const key = labelMatch[1];
+            let foundVal = "";
+            
+            for (let offset = 1; offset <= 3; offset++) {
+              if (c + offset < row.length) {
+                const tempVal = String(row[c + offset] || '').trim();
+                if (tempVal && !new RegExp(`^(${allKeywords})`).test(tempVal)) {
+                  foundVal = tempVal;
+                  break;
+                }
+              }
+            }
+            
+            if (foundVal && !foundVal.startsWith("▶")) {
+              if (new RegExp(codeKeywords, "i").test(key) && !meta.externalCode) meta.externalCode = foundVal;
+              else if (new RegExp(storeKeywords, "i").test(key) && !meta.receiverStore) meta.receiverStore = foundVal;
+              else if (new RegExp(nameKeywords, "i").test(key) && !meta.receiverName) meta.receiverName = foundVal;
+              else if (new RegExp(phoneKeywords, "i").test(key) && !meta.receiverPhone) meta.receiverPhone = foundVal;
+              else if (new RegExp(addressKeywords, "i").test(key) && !meta.receiverAddress) meta.receiverAddress = foundVal;
+            }
+          }
         }
-      }
+      });
     }
   }
   
@@ -240,11 +246,15 @@ export class RuleEngine {
           if (startRegex.test(String(row[0] || ''))) cardIndices.push(idx);
         });
 
+        // 提取第一个卡片上方全局区域的元数据（如全局调拨单号）
+        const firstCardStart = cardIndices.length > 0 ? cardIndices[0] : aoa.length;
+        const globalMeta = extractFooterInfo(aoa.slice(0, firstCardStart), 0);
+
         cardIndices.forEach((startIdx, listIdx) => {
           const endIdx = listIdx < cardIndices.length - 1 ? cardIndices[listIdx + 1] : aoa.length;
           
-          // 提取卡片级字段（收货人等）
-          const cardMeta: Record<string, any> = {};
+          // 提取卡片级字段（收货人等），默认包含全局区域的元数据
+          const cardMeta: Record<string, any> = { ...globalMeta };
           
           // 通用扫描卡片区域内所有的收货信息（做回补）
           const scannedMeta = extractFooterInfo(aoa.slice(startIdx, endIdx), 0);
