@@ -855,12 +855,17 @@ export default function Home() {
                   </tr>
                 </thead>
                 <tbody>
-                  {standardFields.map(f => (
+                  {standardFields.filter(f => 
+                    // 只展示考试要求的核心10个字段
+                    !['senderName','senderPhone','senderAddress','weight','tempZone'].includes(f.key)
+                  ).map(f => (
                     <tr key={f.key} style={{ borderBottom: '1px solid #f5f5f5' }}>
                       <td style={{ padding: '6px 0', fontWeight: 500 }}>{f.label}</td>
                       <td style={{ padding: '6px 0', textAlign: 'center' }}>
-                        {f.key === 'skuCode' || f.key === 'skuName' || f.key === 'quantity' || f.key === 'tempZone' ? 
+                        {f.required ? 
                           <Tag color="red" style={{ margin: 0, fontSize: 10 }}>是</Tag> : 
+                          ['receiverStore','receiverName','receiverPhone','receiverAddress'].includes(f.key) ?
+                          <Tag color="orange" style={{ margin: 0, fontSize: 10 }}>A/B组</Tag> :
                           <Tag style={{ margin: 0, fontSize: 10 }}>否</Tag>}
                       </td>
                       <td style={{ padding: '6px 0', color: '#86909c', fontSize: 12 }}>
@@ -869,15 +874,10 @@ export default function Home() {
                         {f.key === 'receiverName' && '收件人姓名，B组收件人模式字段'}
                         {f.key === 'receiverPhone' && '收货联系人手机/座机电话'}
                         {f.key === 'receiverAddress' && '收货人完整详细地址'}
-                        {f.key === 'senderName' && '发件人姓名，支持配置静态默认值'}
-                        {f.key === 'senderPhone' && '发件电话，支持配置静态默认值'}
-                        {f.key === 'senderAddress' && '发件仓库地址，支持静态默认值'}
                         {f.key === 'skuCode' && 'SKU 编码，用于区分出库商品'}
                         {f.key === 'skuName' && 'SKU 名称，出库商品明细'}
-                        {f.key === 'quantity' && '发货数量，必须为正整数'}
-                        {f.key === 'skuSpec' && '物品规格型号'}
-                        {f.key === 'weight' && '货物重量(kg)'}
-                        {f.key === 'tempZone' && '温层要求，可选常温/冷藏/冷冻'}
+                        {f.key === 'quantity' && '发货数量，必须为正数'}
+                        {f.key === 'skuSpec' && '物品规格型号描述'}
                         {f.key === 'remark' && '其他附言备注信息'}
                       </td>
                     </tr>

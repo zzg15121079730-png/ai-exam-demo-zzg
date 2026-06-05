@@ -109,15 +109,15 @@ function validateRow(row: any, rowNum: number, reverseMapping: Record<string, st
     }
   }
 
-  // 件数 / 数量 (positive integer)
+  // 件数 / 数量 (正数，考试要求"必须为正数")
   if (row.quantity !== undefined && row.quantity !== null && row.quantity !== "") {
     const qty = Number(row.quantity);
-    if (isNaN(qty) || !Number.isInteger(qty) || qty <= 0) {
+    if (isNaN(qty) || qty <= 0) {
       errors.push({
         row: rowNum,
         field: "quantity",
-        fieldLabel: reverseMapping.quantity || "数量",
-        message: "必须为正整数",
+        fieldLabel: reverseMapping.quantity || "SKU发货数量",
+        message: "必须为正数",
       });
     }
   }
