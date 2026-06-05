@@ -825,7 +825,7 @@ export default function Home() {
             setStep("idle");
           }}
           width={1400}
-          maskClosable={false}
+          mask={{ closable: false }}
           keyboard={step !== "submitting"}
           destroyOnHidden={false}
           styles={{ body: { maxHeight: '72vh', overflow: 'auto' } }}

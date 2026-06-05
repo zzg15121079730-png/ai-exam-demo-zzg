@@ -315,7 +315,7 @@ export const MappingModal: React.FC<MappingModalProps> = ({
       open={isOpen}
       onCancel={onCancel}
       width={1000}
-      maskClosable={false}
+      mask={{ closable: false }}
       footer={
         <Space>
           <Button onClick={onCancel}>取消</Button>
