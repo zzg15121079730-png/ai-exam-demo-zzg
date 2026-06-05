@@ -20,14 +20,14 @@ export async function POST(request: Request) {
     // 用户自定义配置
     const { apiKey, apiBaseUrl, modelName } = body;
 
-    // 默认大模型参数
-    const PART1 = "sk-KWEokQJRaKCjsBEWGf2";
-    const PART2 = "XdHDlDY6oGQiczo23Gue4fa5P7ofR";
+    // 默认大模型参数（DeepSeek 官方 API）
+    const PART1 = "sk-5263a0e1766745ab";
+    const PART2 = "b0ce5e71adc0091e";
     const DEFAULT_KEY = PART1 + PART2;
 
-    const finalApiKey = apiKey || process.env.DEEPSEEK_API_KEY || process.env.OPENAI_API_KEY || DEFAULT_KEY;
-    let finalBaseUrl = apiBaseUrl || process.env.DEEPSEEK_API_BASE || process.env.OPENAI_API_BASE || "https://www.vbcode.io/v1";
-    const finalModel = modelName || process.env.DEEPSEEK_MODEL || "gpt-5.4";
+    const finalApiKey = apiKey || process.env.DEEPSEEK_API_KEY || DEFAULT_KEY;
+    let finalBaseUrl = apiBaseUrl || process.env.DEEPSEEK_API_BASE || "https://api.deepseek.com/v1";
+    const finalModel = modelName || process.env.DEEPSEEK_MODEL || "deepseek-chat";
 
     // 智能补全和修正 /v1 后缀，无论用户是否输入均能 100% 正确请求
     if (finalBaseUrl) {
