@@ -175,19 +175,21 @@ export const validateData = (
     const rowErrors = validateRow(mappedRow, rowNum, reverseMapping);
     errors.push(...rowErrors);
 
-    // 外部编码批次内重复性检查
-    if (mappedRow.externalCode) {
-      const codeStr = String(mappedRow.externalCode).trim();
-      if (externalCodes.has(codeStr)) {
-        const prev = externalCodes.get(codeStr)!;
+    // 外部编码+SKU编码批次内重复性检查
+    if (mappedRow.externalCode && mappedRow.skuCode) {
+      const extCode = String(mappedRow.externalCode).trim();
+      const sku = String(mappedRow.skuCode).trim();
+      const uniqueKey = `${extCode}_${sku}`;
+      if (externalCodes.has(uniqueKey)) {
+        const prev = externalCodes.get(uniqueKey)!;
         errors.push({
           row: rowNum,
           field: "externalCode",
           fieldLabel: reverseMapping.externalCode || "外部编码",
-          message: `与第 ${prev} 行重复`,
+          message: `与第 ${prev} 行重复 (外部编码+SKU重复)`,
         });
       } else {
-        externalCodes.set(codeStr, rowNum);
+        externalCodes.set(uniqueKey, rowNum);
       }
     }
 
@@ -226,19 +228,21 @@ export const validateStandardData = (
     const rowErrors = validateRow(mappedRow, rowNum, reverseMapping);
     errors.push(...rowErrors);
 
-    // 外部编码批次内重复性检查
-    if (mappedRow.externalCode) {
-      const codeStr = String(mappedRow.externalCode).trim();
-      if (externalCodes.has(codeStr)) {
-        const prev = externalCodes.get(codeStr)!;
+    // 外部编码+SKU编码批次内重复性检查
+    if (mappedRow.externalCode && mappedRow.skuCode) {
+      const extCode = String(mappedRow.externalCode).trim();
+      const sku = String(mappedRow.skuCode).trim();
+      const uniqueKey = `${extCode}_${sku}`;
+      if (externalCodes.has(uniqueKey)) {
+        const prev = externalCodes.get(uniqueKey)!;
         errors.push({
           row: rowNum,
           field: "externalCode",
           fieldLabel: "外部编码",
-          message: `与第 ${prev} 行重复`,
+          message: `与第 ${prev} 行重复 (外部编码+SKU重复)`,
         });
       } else {
-        externalCodes.set(codeStr, rowNum);
+        externalCodes.set(uniqueKey, rowNum);
       }
     }
 

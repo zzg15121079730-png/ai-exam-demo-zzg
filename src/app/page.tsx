@@ -449,8 +449,13 @@ export default function Home() {
   const dbCheckTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   
   const checkDbDuplicates = useCallback((currentData: any[], _currentErrors: ValidationError[]) => {
-    const codesToCheck = currentData.map(r => r.externalCode).filter(Boolean);
-    if (codesToCheck.length === 0) return;
+    const itemsToCheck = currentData
+      .filter(r => r.externalCode && r.skuCode)
+      .map(r => ({ externalCode: r.externalCode, skuCode: r.skuCode }));
+    if (itemsToCheck.length === 0) {
+      setErrors(prev => prev.filter(e => e.message !== "与数据库已存在数据重复"));
+      return;
+    }
     
     // 防抖 500ms
     if (dbCheckTimer.current) clearTimeout(dbCheckTimer.current);
@@ -459,19 +464,22 @@ export default function Home() {
         const res = await fetch("/api/waybills/check-duplicates", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ codes: codesToCheck })
+          body: JSON.stringify({ items: itemsToCheck })
         });
         const dbData = await res.json();
         if (dbData.duplicates?.length > 0) {
           const dbErrors: ValidationError[] = [];
           currentData.forEach((row, i) => {
-            if (row.externalCode && dbData.duplicates.includes(row.externalCode)) {
-              dbErrors.push({
-                row: i + 1,
-                field: "externalCode",
-                fieldLabel: "外部编码",
-                message: "与数据库已存在数据重复",
-              });
+            if (row.externalCode && row.skuCode) {
+              const key = `${row.externalCode}_${row.skuCode}`;
+              if (dbData.duplicates.includes(key)) {
+                dbErrors.push({
+                  row: i + 1,
+                  field: "externalCode",
+                  fieldLabel: "外部编码",
+                  message: "与数据库已存在数据重复",
+                });
+              }
             }
           });
           setErrors(prev => [...prev.filter(e => e.message !== "与数据库已存在数据重复"), ...dbErrors]);
