@@ -670,7 +670,7 @@ export default function Home() {
                   <Progress 
                     percent={progress.percent} 
                     showInfo={false} 
-                    strokeWidth={10} 
+                    size={['100%', 10]} 
                     status="active"
                     strokeColor={{ from: '#0fc6c2', to: '#13c2c2' }}
                   />
@@ -870,7 +870,7 @@ export default function Home() {
           {/* 提交进度 */}
           {step === "submitting" && (
             <div style={{ padding: '60px 0', textAlign: 'center' }}>
-              <Progress type="circle" percent={progress.percent} strokeWidth={8} size={120} strokeColor="#0fc6c2" />
+              <Progress type="circle" percent={progress.percent} size={120} strokeColor="#0fc6c2" />
               <h3 style={{ marginTop: 20, color: '#333' }}>{progress.label}</h3>
               <Text type="secondary">
                 总体导入进度: {progress.percent}% · 已解析完成 {progress.current}/{progress.total} 行运单 SKU

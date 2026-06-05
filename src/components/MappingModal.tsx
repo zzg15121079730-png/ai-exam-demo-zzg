@@ -78,7 +78,9 @@ export const MappingModal: React.FC<MappingModalProps> = ({
     }
   }, [initialRule, isOpen, form]);
 
-  if (!isOpen || !rule) return null;
+  // 如果 rule 为空则不渲染内容，但不能 return null（违反 Hooks 规则）
+  const safeRule = rule || { fileType: "excel", templateName: "", mappings: [] } as RuleConfig;
+  const safeMappings = safeRule.mappings || [];
 
   // 根据表单值组合 RuleConfig
   const getRuleFromForm = (): RuleConfig => {
@@ -165,7 +167,7 @@ export const MappingModal: React.FC<MappingModalProps> = ({
       fileType: values.fileType,
       excel: values.fileType === "excel" ? excel : undefined,
       text: values.fileType !== "excel" ? text : undefined,
-      mappings: rule.mappings
+      mappings: safeMappings
     };
   };
 
@@ -207,8 +209,7 @@ export const MappingModal: React.FC<MappingModalProps> = ({
 
   // 更新某一个字段的映射绑定
   const handleMappingChange = (fieldKey: string, key: "column" | "defaultValue", value: any) => {
-    if (!rule) return;
-    const updatedMappings = (rule.mappings || []).map(m => {
+    const updatedMappings = safeMappings.map(m => {
       if (m.field === fieldKey) {
         const updated = { ...m, [key]: value };
         // 既然用户已经手动修改，就不是 AI 推测了
@@ -218,18 +219,17 @@ export const MappingModal: React.FC<MappingModalProps> = ({
       return m;
     });
     // 如果没有，就新增一个
-    if (!(rule.mappings || []).find(m => m.field === fieldKey)) {
+    if (!safeMappings.find(m => m.field === fieldKey)) {
       updatedMappings.push({
         field: fieldKey,
         [key]: value
       });
     }
-    setRule({ ...rule, mappings: updatedMappings });
+    setRule({ ...safeRule, mappings: updatedMappings });
   };
 
   const getMappingForField = (fieldKey: string) => {
-    if (!rule) return { field: fieldKey };
-    return (rule.mappings || []).find(m => m.field === fieldKey) || { field: fieldKey };
+    return safeMappings.find(m => m.field === fieldKey) || { field: fieldKey };
   };
 
   // 渲染表头映射列表
@@ -312,7 +312,7 @@ export const MappingModal: React.FC<MappingModalProps> = ({
           <span style={{ fontSize: 18, fontWeight: 'bold' }}>AI 生成的通用解析规则微调与确认</span>
         </div>
       }
-      open={isOpen}
+      open={isOpen && !!rule}
       onCancel={onCancel}
       width={1000}
       mask={{ closable: false }}
@@ -339,7 +339,7 @@ export const MappingModal: React.FC<MappingModalProps> = ({
         </Space>
       }
     >
-      {(rule.mappings || []).some(m => m.isGuess) && (
+      {safeMappings.some(m => m.isGuess) && (
         <Alert
           message="AI 大模型已完成规则预处理"
           description={
