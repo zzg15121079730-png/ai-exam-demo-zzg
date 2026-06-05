@@ -29,42 +29,7 @@ function validateRow(row: any, rowNum: number, reverseMapping: Record<string, st
     }
   });
 
-  // 2. A组门店模式与B组收件人模式二选一校验
-  // A组：receiverStore 不为空
-  // B组：receiverName, receiverPhone, receiverAddress 均不为空
-  const hasStore = row.receiverStore !== undefined && row.receiverStore !== null && String(row.receiverStore).trim() !== "";
-  const hasReceiverInfo = 
-    (row.receiverName !== undefined && row.receiverName !== null && String(row.receiverName).trim() !== "") &&
-    (row.receiverPhone !== undefined && row.receiverPhone !== null && String(row.receiverPhone).trim() !== "") &&
-    (row.receiverAddress !== undefined && row.receiverAddress !== null && String(row.receiverAddress).trim() !== "");
-
-  if (!hasStore && !hasReceiverInfo) {
-    // 两个模式都没满足
-    errors.push({
-      row: rowNum,
-      field: "receiverStore",
-      fieldLabel: reverseMapping.receiverStore || "收货门店",
-      message: "A组收货门店模式与B组收件人姓名/电话/地址模式必须二选一必填",
-    });
-    errors.push({
-      row: rowNum,
-      field: "receiverName",
-      fieldLabel: reverseMapping.receiverName || "收件人姓名",
-      message: "A组收货门店模式与B组收件人姓名/电话/地址模式必须二选一必填",
-    });
-    errors.push({
-      row: rowNum,
-      field: "receiverPhone",
-      fieldLabel: reverseMapping.receiverPhone || "收件人电话",
-      message: "A组收货门店模式与B组收件人姓名/电话/地址模式必须二选一必填",
-    });
-    errors.push({
-      row: rowNum,
-      field: "receiverAddress",
-      fieldLabel: reverseMapping.receiverAddress || "收件人地址",
-      message: "A组收货门店模式与B组收件人姓名/电话/地址模式必须二选一必填",
-    });
-  }
+  // 2. A组门店模式与B组收件人模式二选一校验（根据用户要求已移除，仅依靠 excel 解析出来的 required 必填限制）
 
   // 3. 格式校验
   

@@ -11,7 +11,7 @@ import {
   UploadOutlined, FileTextOutlined, CheckCircleOutlined,
   SyncOutlined, SearchOutlined, ReloadOutlined, ExportOutlined,
   SettingOutlined, RobotOutlined, ThunderboltOutlined, EyeOutlined,
-  DeleteOutlined, CopyOutlined, EditOutlined
+  DeleteOutlined, CopyOutlined, EditOutlined, CloseCircleOutlined
 } from "@ant-design/icons";
 import { UploadZone } from "@/components/UploadZone";
 import { DataGrid } from "@/components/DataGrid";
@@ -26,9 +26,10 @@ const { Title, Text } = Typography;
 
 export default function Home() {
   // ========= 状态管理 =========
-  const [step, setStep] = useState<"idle" | "parsing" | "preview" | "submitting" | "done">("idle");
+  const [step, setStep] = useState<"idle" | "parsing" | "preview" | "submitting" | "done" | "failed">("idle");
   const [progress, setProgress] = useState({ percent: 0, current: 0, total: 0, label: "" });
   const [submitting, setSubmitting] = useState(false);
+  const [parseError, setParseError] = useState("");
   
   // 规则相关
   const [rulesList, setRulesList] = useState<any[]>([]);
@@ -224,7 +225,8 @@ export default function Home() {
         setStep("idle"); // 规则模态框开启，主页返回就绪
       } catch (err: any) {
         message.error("大模型分析文件失败: " + err.message);
-        setStep("idle");
+        setParseError(err.message || "大模型分析文件特征失败");
+        setStep("failed");
       }
     } else {
       // 如果用户选择了已有的规则，直接执行解析
@@ -398,7 +400,8 @@ export default function Home() {
       }
     } catch (err: any) {
       message.error("解析文件失败: " + err.message);
-      setStep("idle");
+      setParseError(err.message || "解析文件引擎执行失败");
+      setStep("failed");
     }
   };
 
@@ -436,6 +439,26 @@ export default function Home() {
       }
     })
     .catch(() => {});
+  };
+
+  // ========= 手动配置规则入口 =========
+  const handleManualConfigure = () => {
+    const initialRule: RuleConfig = {
+      templateName: "手动配置解析规则",
+      fileType: currentFile?.name.split('.').pop()?.toLowerCase() === "pdf" ? "pdf" : 
+                currentFile?.name.split('.').pop()?.toLowerCase() === "docx" ? "word" : "excel",
+      startRowRegex: "",
+      endRowRegex: "",
+      tableRowRegex: "",
+      mappings: standardFields.map(f => ({
+        field: f.key,
+        columnName: "",
+        defaultValue: "",
+        regex: ""
+      }))
+    };
+    setAiRule(initialRule);
+    setRuleModalOpen(true);
   };
 
   // ========= 模态框规则确认并保存 =========
@@ -817,7 +840,9 @@ export default function Home() {
                 )}
               </div>
 
-              <UploadZone onFileSelect={handleFileSelect} />
+              {step !== "parsing" && step !== "failed" && !validData.length && (
+                <UploadZone onFileSelect={handleFileSelect} />
+              )}
               
               {/* 解析实时进度条 */}
               {step === "parsing" && (
@@ -836,8 +861,97 @@ export default function Home() {
                 </div>
               )}
 
+              {/* 解析失败状态展示 */}
+              {step === "failed" && currentFile && (
+                <div style={{ marginTop: 20 }}>
+                  <div style={{ 
+                    padding: '20px 24px', 
+                    backgroundColor: '#fff1f0', 
+                    border: '1px solid #ffccc7', 
+                    borderRadius: 12,
+                    marginBottom: 20
+                  }}>
+                    <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
+                      <CloseCircleOutlined style={{ color: '#ff4d4f', fontSize: 24, marginTop: 2 }} />
+                      <div>
+                        <h4 style={{ margin: 0, color: '#cf1322', fontSize: 16, fontWeight: 'bold' }}>解析文件失败</h4>
+                        <p style={{ margin: '8px 0 0 0', color: '#ff4d4f', fontSize: 14 }}>
+                          错误详情：{parseError || "系统解析引擎未匹配到任何订单行或大模型调用失败，请检查模型配置、文件规范或规则模板。"}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* 原始文件信息 */}
+                  <Card 
+                    size="small"
+                    title={<span style={{ fontWeight: 'bold' }}>📄 原始上传文件物理特征</span>}
+                    style={{ marginBottom: 20, borderRadius: 8 }}
+                  >
+                    <table style={{ width: '100%', fontSize: 13, borderCollapse: 'collapse' }}>
+                      <tbody>
+                        <tr style={{ borderBottom: '1px solid #f0f0f0' }}>
+                          <td style={{ padding: '8px 0', color: '#86909c', width: '20%' }}>文件名</td>
+                          <td style={{ padding: '8px 0', fontWeight: 'bold', color: '#1d2129' }}>{currentFile.name}</td>
+                        </tr>
+                        <tr style={{ borderBottom: '1px solid #f0f0f0' }}>
+                          <td style={{ padding: '8px 0', color: '#86909c' }}>文件大小</td>
+                          <td style={{ padding: '8px 0' }}>{(currentFile.size / 1024).toFixed(2)} KB</td>
+                        </tr>
+                        <tr>
+                          <td style={{ padding: '8px 0', color: '#86909c' }}>文件类型</td>
+                          <td style={{ padding: '8px 0' }}><Tag color="blue">{currentFile.name.split('.').pop()?.toUpperCase()}</Tag></td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </Card>
+
+                  {/* 手动处理引导与操作 */}
+                  <Space size="middle" wrap style={{ width: '100%', justifyContent: 'flex-end' }}>
+                    <Button 
+                      onClick={() => {
+                        setStep("idle");
+                        setCurrentFile(null);
+                        setFileName("");
+                        setParseError("");
+                        setValidData([]);
+                        setErrors([]);
+                      }}
+                    >
+                      放弃并重新上传
+                    </Button>
+                    
+                    <Button 
+                      type="primary" 
+                      onClick={handleManualConfigure}
+                      style={{ backgroundColor: '#fa8c16', borderColor: '#fa8c16' }}
+                    >
+                      ⚙️ 手动配置规则模板
+                    </Button>
+
+                    <Button 
+                      type="primary"
+                      style={{ backgroundColor: '#0fc6c2', borderColor: '#0fc6c2' }}
+                      onClick={async () => {
+                        const chosenRule = rulesList.find(r => r.id === selectedRuleId);
+                        if (chosenRule) {
+                          const ruleConfig = JSON.parse(chosenRule.mappings);
+                          await executeParse(currentFile, ruleConfig);
+                        } else if (selectedRuleId === "ai-detect") {
+                          await handleFileSelect(currentFile);
+                        } else {
+                          message.error("请选择一个可用的解析规则");
+                        }
+                      }}
+                    >
+                      🔄 换用选中规则重新解析
+                    </Button>
+                  </Space>
+                </div>
+              )}
+
               {/* 上传成功状态展示 */}
-              {step !== "idle" && step !== "parsing" && fileName && (
+              {step !== "idle" && step !== "parsing" && step !== "failed" && fileName && validData.length > 0 && (
                 <div style={{ 
                   marginTop: 20, padding: '12px 20px', 
                   backgroundColor: '#e6fffb', border: '1px solid #87e8de', borderRadius: 8,

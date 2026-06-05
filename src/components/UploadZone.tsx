@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { Upload, Typography } from "antd";
+import { Upload, Typography, message } from "antd";
 import { InboxOutlined } from "@ant-design/icons";
 import type { UploadProps } from "antd";
 
@@ -22,7 +22,7 @@ export const UploadZone: React.FC<UploadZoneProps> = ({ onFileSelect }) => {
       const ext = file.name.split('.').pop()?.toLowerCase();
       const allowed = ["xlsx", "xls", "docx", "pdf"];
       if (!ext || !allowed.includes(ext)) {
-        alert("请上传 Excel (.xlsx/.xls)、Word (.docx) 或 PDF 文件");
+        message.error("请上传 Excel (.xlsx/.xls)、Word (.docx) 或 PDF 文件");
         return Upload.LIST_IGNORE;
       }
       onFileSelect(file);
