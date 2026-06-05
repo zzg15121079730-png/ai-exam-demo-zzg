@@ -14,6 +14,7 @@ model Waybill {
   senderName      String   @map("sender_name")
   senderPhone     String   @map("sender_phone")
   senderAddress   String   @map("sender_address")
+  receiverStore   String?  @map("receiver_store")
   receiverName    String   @map("receiver_name")
   receiverPhone   String   @map("receiver_phone")
   receiverAddress String   @map("receiver_address")

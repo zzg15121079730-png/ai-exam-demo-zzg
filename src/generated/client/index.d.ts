@@ -957,6 +957,7 @@ export namespace Prisma {
     senderName: string | null
     senderPhone: string | null
     senderAddress: string | null
+    receiverStore: string | null
     receiverName: string | null
     receiverPhone: string | null
     receiverAddress: string | null
@@ -975,6 +976,7 @@ export namespace Prisma {
     senderName: string | null
     senderPhone: string | null
     senderAddress: string | null
+    receiverStore: string | null
     receiverName: string | null
     receiverPhone: string | null
     receiverAddress: string | null
@@ -993,6 +995,7 @@ export namespace Prisma {
     senderName: number
     senderPhone: number
     senderAddress: number
+    receiverStore: number
     receiverName: number
     receiverPhone: number
     receiverAddress: number
@@ -1023,6 +1026,7 @@ export namespace Prisma {
     senderName?: true
     senderPhone?: true
     senderAddress?: true
+    receiverStore?: true
     receiverName?: true
     receiverPhone?: true
     receiverAddress?: true
@@ -1041,6 +1045,7 @@ export namespace Prisma {
     senderName?: true
     senderPhone?: true
     senderAddress?: true
+    receiverStore?: true
     receiverName?: true
     receiverPhone?: true
     receiverAddress?: true
@@ -1059,6 +1064,7 @@ export namespace Prisma {
     senderName?: true
     senderPhone?: true
     senderAddress?: true
+    receiverStore?: true
     receiverName?: true
     receiverPhone?: true
     receiverAddress?: true
@@ -1164,6 +1170,7 @@ export namespace Prisma {
     senderName: string
     senderPhone: string
     senderAddress: string
+    receiverStore: string | null
     receiverName: string
     receiverPhone: string
     receiverAddress: string
@@ -1201,6 +1208,7 @@ export namespace Prisma {
     senderName?: boolean
     senderPhone?: boolean
     senderAddress?: boolean
+    receiverStore?: boolean
     receiverName?: boolean
     receiverPhone?: boolean
     receiverAddress?: boolean
@@ -1219,6 +1227,7 @@ export namespace Prisma {
     senderName?: boolean
     senderPhone?: boolean
     senderAddress?: boolean
+    receiverStore?: boolean
     receiverName?: boolean
     receiverPhone?: boolean
     receiverAddress?: boolean
@@ -1237,6 +1246,7 @@ export namespace Prisma {
     senderName?: boolean
     senderPhone?: boolean
     senderAddress?: boolean
+    receiverStore?: boolean
     receiverName?: boolean
     receiverPhone?: boolean
     receiverAddress?: boolean
@@ -1259,6 +1269,7 @@ export namespace Prisma {
       senderName: string
       senderPhone: string
       senderAddress: string
+      receiverStore: string | null
       receiverName: string
       receiverPhone: string
       receiverAddress: string
@@ -1667,6 +1678,7 @@ export namespace Prisma {
     readonly senderName: FieldRef<"Waybill", 'String'>
     readonly senderPhone: FieldRef<"Waybill", 'String'>
     readonly senderAddress: FieldRef<"Waybill", 'String'>
+    readonly receiverStore: FieldRef<"Waybill", 'String'>
     readonly receiverName: FieldRef<"Waybill", 'String'>
     readonly receiverPhone: FieldRef<"Waybill", 'String'>
     readonly receiverAddress: FieldRef<"Waybill", 'String'>
@@ -2875,6 +2887,7 @@ export namespace Prisma {
     senderName: 'senderName',
     senderPhone: 'senderPhone',
     senderAddress: 'senderAddress',
+    receiverStore: 'receiverStore',
     receiverName: 'receiverName',
     receiverPhone: 'receiverPhone',
     receiverAddress: 'receiverAddress',
@@ -2999,6 +3012,7 @@ export namespace Prisma {
     senderName?: StringFilter<"Waybill"> | string
     senderPhone?: StringFilter<"Waybill"> | string
     senderAddress?: StringFilter<"Waybill"> | string
+    receiverStore?: StringNullableFilter<"Waybill"> | string | null
     receiverName?: StringFilter<"Waybill"> | string
     receiverPhone?: StringFilter<"Waybill"> | string
     receiverAddress?: StringFilter<"Waybill"> | string
@@ -3017,6 +3031,7 @@ export namespace Prisma {
     senderName?: SortOrder
     senderPhone?: SortOrder
     senderAddress?: SortOrder
+    receiverStore?: SortOrderInput | SortOrder
     receiverName?: SortOrder
     receiverPhone?: SortOrder
     receiverAddress?: SortOrder
@@ -3038,6 +3053,7 @@ export namespace Prisma {
     senderName?: StringFilter<"Waybill"> | string
     senderPhone?: StringFilter<"Waybill"> | string
     senderAddress?: StringFilter<"Waybill"> | string
+    receiverStore?: StringNullableFilter<"Waybill"> | string | null
     receiverName?: StringFilter<"Waybill"> | string
     receiverPhone?: StringFilter<"Waybill"> | string
     receiverAddress?: StringFilter<"Waybill"> | string
@@ -3056,6 +3072,7 @@ export namespace Prisma {
     senderName?: SortOrder
     senderPhone?: SortOrder
     senderAddress?: SortOrder
+    receiverStore?: SortOrderInput | SortOrder
     receiverName?: SortOrder
     receiverPhone?: SortOrder
     receiverAddress?: SortOrder
@@ -3082,6 +3099,7 @@ export namespace Prisma {
     senderName?: StringWithAggregatesFilter<"Waybill"> | string
     senderPhone?: StringWithAggregatesFilter<"Waybill"> | string
     senderAddress?: StringWithAggregatesFilter<"Waybill"> | string
+    receiverStore?: StringNullableWithAggregatesFilter<"Waybill"> | string | null
     receiverName?: StringWithAggregatesFilter<"Waybill"> | string
     receiverPhone?: StringWithAggregatesFilter<"Waybill"> | string
     receiverAddress?: StringWithAggregatesFilter<"Waybill"> | string
@@ -3157,6 +3175,7 @@ export namespace Prisma {
     senderName: string
     senderPhone: string
     senderAddress: string
+    receiverStore?: string | null
     receiverName: string
     receiverPhone: string
     receiverAddress: string
@@ -3175,6 +3194,7 @@ export namespace Prisma {
     senderName: string
     senderPhone: string
     senderAddress: string
+    receiverStore?: string | null
     receiverName: string
     receiverPhone: string
     receiverAddress: string
@@ -3193,6 +3213,7 @@ export namespace Prisma {
     senderName?: StringFieldUpdateOperationsInput | string
     senderPhone?: StringFieldUpdateOperationsInput | string
     senderAddress?: StringFieldUpdateOperationsInput | string
+    receiverStore?: NullableStringFieldUpdateOperationsInput | string | null
     receiverName?: StringFieldUpdateOperationsInput | string
     receiverPhone?: StringFieldUpdateOperationsInput | string
     receiverAddress?: StringFieldUpdateOperationsInput | string
@@ -3211,6 +3232,7 @@ export namespace Prisma {
     senderName?: StringFieldUpdateOperationsInput | string
     senderPhone?: StringFieldUpdateOperationsInput | string
     senderAddress?: StringFieldUpdateOperationsInput | string
+    receiverStore?: NullableStringFieldUpdateOperationsInput | string | null
     receiverName?: StringFieldUpdateOperationsInput | string
     receiverPhone?: StringFieldUpdateOperationsInput | string
     receiverAddress?: StringFieldUpdateOperationsInput | string
@@ -3229,6 +3251,7 @@ export namespace Prisma {
     senderName: string
     senderPhone: string
     senderAddress: string
+    receiverStore?: string | null
     receiverName: string
     receiverPhone: string
     receiverAddress: string
@@ -3247,6 +3270,7 @@ export namespace Prisma {
     senderName?: StringFieldUpdateOperationsInput | string
     senderPhone?: StringFieldUpdateOperationsInput | string
     senderAddress?: StringFieldUpdateOperationsInput | string
+    receiverStore?: NullableStringFieldUpdateOperationsInput | string | null
     receiverName?: StringFieldUpdateOperationsInput | string
     receiverPhone?: StringFieldUpdateOperationsInput | string
     receiverAddress?: StringFieldUpdateOperationsInput | string
@@ -3265,6 +3289,7 @@ export namespace Prisma {
     senderName?: StringFieldUpdateOperationsInput | string
     senderPhone?: StringFieldUpdateOperationsInput | string
     senderAddress?: StringFieldUpdateOperationsInput | string
+    receiverStore?: NullableStringFieldUpdateOperationsInput | string | null
     receiverName?: StringFieldUpdateOperationsInput | string
     receiverPhone?: StringFieldUpdateOperationsInput | string
     receiverAddress?: StringFieldUpdateOperationsInput | string
@@ -3414,6 +3439,7 @@ export namespace Prisma {
     senderName?: SortOrder
     senderPhone?: SortOrder
     senderAddress?: SortOrder
+    receiverStore?: SortOrder
     receiverName?: SortOrder
     receiverPhone?: SortOrder
     receiverAddress?: SortOrder
@@ -3437,6 +3463,7 @@ export namespace Prisma {
     senderName?: SortOrder
     senderPhone?: SortOrder
     senderAddress?: SortOrder
+    receiverStore?: SortOrder
     receiverName?: SortOrder
     receiverPhone?: SortOrder
     receiverAddress?: SortOrder
@@ -3455,6 +3482,7 @@ export namespace Prisma {
     senderName?: SortOrder
     senderPhone?: SortOrder
     senderAddress?: SortOrder
+    receiverStore?: SortOrder
     receiverName?: SortOrder
     receiverPhone?: SortOrder
     receiverAddress?: SortOrder

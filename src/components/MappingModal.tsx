@@ -36,39 +36,43 @@ export const MappingModal: React.FC<MappingModalProps> = ({
   // 初始化 rule
   useEffect(() => {
     if (initialRule) {
-      setRule(initialRule);
+      const safeRule = {
+        ...initialRule,
+        mappings: initialRule.mappings || []
+      };
+      setRule(safeRule);
       form.setFieldsValue({
-        templateName: initialRule.templateName || "",
-        fileType: initialRule.fileType || "excel",
+        templateName: safeRule.templateName || "",
+        fileType: safeRule.fileType || "excel",
         // Excel 配置项
-        headerRow: initialRule.excel?.headerRow || 1,
-        dataStartRow: initialRule.excel?.dataStartRow || 2,
-        dataEndRowOffset: initialRule.excel?.dataEndRowOffset || 0,
-        skipRowsWith: initialRule.excel?.skipRowsWith?.join(",") || "",
+        headerRow: safeRule.excel?.headerRow || 1,
+        dataStartRow: safeRule.excel?.dataStartRow || 2,
+        dataEndRowOffset: safeRule.excel?.dataEndRowOffset || 0,
+        skipRowsWith: safeRule.excel?.skipRowsWith?.join(",") || "",
         // 跨行合并开关
-        rowAggregationEnabled: initialRule.excel?.rowAggregation?.enabled || false,
-        groupByField: initialRule.excel?.rowAggregation?.groupByField || "externalCode",
+        rowAggregationEnabled: safeRule.excel?.rowAggregation?.enabled || false,
+        groupByField: safeRule.excel?.rowAggregation?.groupByField || "externalCode",
         // 矩阵转置开关
-        matrixPivotEnabled: initialRule.excel?.matrixPivot?.enabled || false,
-        pivotHeaderRow: initialRule.excel?.matrixPivot?.pivotHeaderRow || 2,
-        pivotColumnsStart: initialRule.excel?.matrixPivot?.pivotColumnsStart || 3,
-        skuFieldsStr: JSON.stringify(initialRule.excel?.matrixPivot?.skuFields || [
+        matrixPivotEnabled: safeRule.excel?.matrixPivot?.enabled || false,
+        pivotHeaderRow: safeRule.excel?.matrixPivot?.pivotHeaderRow || 2,
+        pivotColumnsStart: safeRule.excel?.matrixPivot?.pivotColumnsStart || 3,
+        skuFieldsStr: JSON.stringify(safeRule.excel?.matrixPivot?.skuFields || [
           { field: "skuCode", column: "SKU物品编码" },
           { field: "skuName", column: "SKU物品名称" }
         ], null, 2),
         // 尾部提取开关
-        footerExtractionEnabled: initialRule.excel?.footerExtraction?.enabled || false,
-        footerFieldsStr: JSON.stringify(initialRule.excel?.footerExtraction?.fields || [], null, 2),
+        footerExtractionEnabled: safeRule.excel?.footerExtraction?.enabled || false,
+        footerFieldsStr: JSON.stringify(safeRule.excel?.footerExtraction?.fields || [], null, 2),
         // 卡片开关
-        cardLayoutEnabled: initialRule.excel?.cardLayout?.enabled || false,
-        cardStartRegex: initialRule.excel?.cardLayout?.cardStartRegex || "▶",
-        cardFieldsStr: JSON.stringify(initialRule.excel?.cardLayout?.fields || [], null, 2),
-        tableStartRowOffset: initialRule.excel?.cardLayout?.tableStartRowOffset || 4,
+        cardLayoutEnabled: safeRule.excel?.cardLayout?.enabled || false,
+        cardStartRegex: safeRule.excel?.cardLayout?.cardStartRegex || "▶",
+        cardFieldsStr: JSON.stringify(safeRule.excel?.cardLayout?.fields || [], null, 2),
+        tableStartRowOffset: safeRule.excel?.cardLayout?.tableStartRowOffset || 4,
         // PDF/Word 解析开关
-        splitPattern: initialRule.text?.splitPattern || "",
-        textFieldsStr: JSON.stringify(initialRule.text?.fields || [], null, 2),
-        tableRowRegex: initialRule.text?.tableRowRegex || "",
-        tableFieldsStr: JSON.stringify(initialRule.text?.tableFields || [], null, 2),
+        splitPattern: safeRule.text?.splitPattern || "",
+        textFieldsStr: JSON.stringify(safeRule.text?.fields || [], null, 2),
+        tableRowRegex: safeRule.text?.tableRowRegex || "",
+        tableFieldsStr: JSON.stringify(safeRule.text?.tableFields || [], null, 2),
       });
       setTestResult([]);
     }
@@ -204,7 +208,7 @@ export const MappingModal: React.FC<MappingModalProps> = ({
   // 更新某一个字段的映射绑定
   const handleMappingChange = (fieldKey: string, key: "column" | "defaultValue", value: any) => {
     if (!rule) return;
-    const updatedMappings = rule.mappings.map(m => {
+    const updatedMappings = (rule.mappings || []).map(m => {
       if (m.field === fieldKey) {
         const updated = { ...m, [key]: value };
         // 既然用户已经手动修改，就不是 AI 推测了
@@ -214,7 +218,7 @@ export const MappingModal: React.FC<MappingModalProps> = ({
       return m;
     });
     // 如果没有，就新增一个
-    if (!updatedMappings.find(m => m.field === fieldKey)) {
+    if (!(rule.mappings || []).find(m => m.field === fieldKey)) {
       updatedMappings.push({
         field: fieldKey,
         [key]: value
@@ -224,7 +228,8 @@ export const MappingModal: React.FC<MappingModalProps> = ({
   };
 
   const getMappingForField = (fieldKey: string) => {
-    return rule.mappings.find(m => m.field === fieldKey) || { field: fieldKey };
+    if (!rule) return { field: fieldKey };
+    return (rule.mappings || []).find(m => m.field === fieldKey) || { field: fieldKey };
   };
 
   // 渲染表头映射列表
@@ -334,7 +339,7 @@ export const MappingModal: React.FC<MappingModalProps> = ({
         </Space>
       }
     >
-      {rule.mappings.some(m => m.isGuess) && (
+      {(rule.mappings || []).some(m => m.isGuess) && (
         <Alert
           message="AI 大模型已完成规则预处理"
           description={

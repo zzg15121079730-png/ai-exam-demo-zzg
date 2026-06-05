@@ -128,6 +128,7 @@ exports.Prisma.WaybillScalarFieldEnum = {
   senderName: 'senderName',
   senderPhone: 'senderPhone',
   senderAddress: 'senderAddress',
+  receiverStore: 'receiverStore',
   receiverName: 'receiverName',
   receiverPhone: 'receiverPhone',
   receiverAddress: 'receiverAddress',
