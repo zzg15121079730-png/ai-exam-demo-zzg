@@ -23,7 +23,7 @@ export async function POST(request: Request) {
     const DEFAULT_KEY = PART1 + PART2;
 
     const finalApiKey = apiKey || process.env.DEEPSEEK_API_KEY || process.env.OPENAI_API_KEY || DEFAULT_KEY;
-    let finalBaseUrl = apiBaseUrl || process.env.DEEPSEEK_API_BASE || process.env.OPENAI_API_BASE || "https://api.vbcode.io/v1";
+    let finalBaseUrl = apiBaseUrl || process.env.DEEPSEEK_API_BASE || process.env.OPENAI_API_BASE || "https://www.vbcode.io/v1";
     const finalModel = modelName || process.env.DEEPSEEK_MODEL || "GPT5.4";
 
     // 智能补全和修正 /v1 后缀，无论用户是否输入均能 100% 正确请求

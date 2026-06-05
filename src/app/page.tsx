@@ -40,7 +40,7 @@ export default function Home() {
   // AI 配置相关
   const [aiConfig, setAiConfig] = useState({
     apiKey: "sk-KWEokQJRaKCjsBEWGf2XdHDlDY6oGQiczo23Gue4fa5P7ofR",
-    apiBaseUrl: "https://api.vbcode.io/v1",
+    apiBaseUrl: "https://www.vbcode.io/v1",
     modelName: "GPT5.4"
   });
 
@@ -66,7 +66,7 @@ export default function Home() {
     const savedModel = localStorage.getItem("ai_model_name");
     setAiConfig({
       apiKey: savedApiKey !== null ? savedApiKey : "sk-KWEokQJRaKCjsBEWGf2XdHDlDY6oGQiczo23Gue4fa5P7ofR",
-      apiBaseUrl: savedBaseUrl || "https://api.vbcode.io/v1",
+      apiBaseUrl: savedBaseUrl || "https://www.vbcode.io/v1",
       modelName: savedModel || "GPT5.4"
     });
     fetchRules();
@@ -612,7 +612,7 @@ export default function Home() {
               </Form.Item>
               <Form.Item label="Base URL">
                 <Input 
-                  placeholder="https://api.vbcode.io/v1" 
+                  placeholder="https://www.vbcode.io/v1" 
                   value={aiConfig.apiBaseUrl} 
                   onChange={e => saveAiConfig("apiBaseUrl", e.target.value)}
                   style={{ width: 240 }}
