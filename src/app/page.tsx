@@ -1067,6 +1067,29 @@ export default function Home() {
           {/* 预览表格 */}
           {step === "preview" && validData.length > 0 && (
             <>
+              <div style={{ marginBottom: 12, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <Space>
+                  <Tag color="cyan">当前共 {validData.length} 行</Tag>
+                  {errors.length > 0 && (
+                    <Tag color="error">含有错误的行数: {new Set(errors.map(e => e.row)).size} 行</Tag>
+                  )}
+                </Space>
+                {errors.length > 0 && (
+                  <Button 
+                    type="primary" 
+                    danger 
+                    icon={<DeleteOutlined />}
+                    onClick={() => {
+                      const errorRowIndexes = new Set(errors.map(e => e.row - 1));
+                      const cleanedData = validData.filter((_, idx) => !errorRowIndexes.has(idx));
+                      handleDataChange(cleanedData);
+                      message.success(`已删除所有含有校验错误的行数据`);
+                    }}
+                  >
+                    一键删除所有不合规行
+                  </Button>
+                )}
+              </div>
               <DataGrid 
                 data={validData} 
                 errors={errors}

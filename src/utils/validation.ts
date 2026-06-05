@@ -138,21 +138,24 @@ export const validateData = (
     const rowErrors = validateRow(mappedRow, rowNum, reverseMapping);
     errors.push(...rowErrors);
 
-    // 外部编码重复性检查
+    // 外部编码重复性检查 (当外部编码和 SKU 均相同时判定为商品明细重复)
     if (mappedRow.externalCode) {
       const codeStr = String(mappedRow.externalCode).trim();
       mappedRow.externalCode = codeStr;
       
-      if (externalCodes.has(codeStr)) {
-        const dupRow = externalCodes.get(codeStr);
+      const skuStr = String(mappedRow.skuCode || "").trim();
+      const uniqueKey = `${codeStr}_${skuStr}`;
+      
+      if (externalCodes.has(uniqueKey)) {
+        const dupRow = externalCodes.get(uniqueKey);
         errors.push({
           row: rowNum,
           field: "externalCode",
           fieldLabel: reverseMapping.externalCode || "外部编码",
-          message: `与第 ${dupRow} 行重复`,
+          message: skuStr ? `与第 ${dupRow} 行商品明细重复` : `与第 ${dupRow} 行重复`,
         });
       } else {
-        externalCodes.set(codeStr, rowNum);
+        externalCodes.set(uniqueKey, rowNum);
       }
     }
 
@@ -194,19 +197,22 @@ export const validateStandardData = (
     const rowErrors = validateRow(mappedRow, rowNum, reverseMapping);
     errors.push(...rowErrors);
 
-    // 外部编码重复性检查
+    // 外部编码重复性检查 (当外部编码和 SKU 均相同时判定为商品明细重复)
     if (mappedRow.externalCode) {
       const codeStr = String(mappedRow.externalCode).trim();
-      if (externalCodes.has(codeStr)) {
-        const dupRow = externalCodes.get(codeStr);
+      const skuStr = String(mappedRow.skuCode || "").trim();
+      const uniqueKey = `${codeStr}_${skuStr}`;
+      
+      if (externalCodes.has(uniqueKey)) {
+        const dupRow = externalCodes.get(uniqueKey);
         errors.push({
           row: rowNum,
           field: "externalCode",
           fieldLabel: "外部编码",
-          message: `与第 ${dupRow} 行重复`,
+          message: skuStr ? `与第 ${dupRow} 行商品明细重复` : `与第 ${dupRow} 行重复`,
         });
       } else {
-        externalCodes.set(codeStr, rowNum);
+        externalCodes.set(uniqueKey, rowNum);
       }
     }
 
