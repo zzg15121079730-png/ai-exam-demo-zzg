@@ -104,51 +104,6 @@ export const validateData = (
     const rowErrors = validateRow(mappedRow, rowNum, reverseMapping);
     errors.push(...rowErrors);
 
-    // 外部编码重复性检查
-    if (mappedRow.externalCode) {
-      const codeStr = String(mappedRow.externalCode).trim();
-      mappedRow.externalCode = codeStr;
-      
-      const storeStr = String(mappedRow.receiverStore || "").trim();
-      const nameStr = String(mappedRow.receiverName || "").trim();
-      const phoneStr = String(mappedRow.receiverPhone || "").trim();
-      const addressStr = String(mappedRow.receiverAddress || "").trim();
-      
-      if (externalCodes.has(codeStr)) {
-        const prev = externalCodes.get(codeStr)!;
-        const isSameReceiver = 
-          storeStr === prev.receiverStore &&
-          nameStr === prev.receiverName &&
-          phoneStr === prev.receiverPhone &&
-          addressStr === prev.receiverAddress;
-          
-        if (isSameReceiver) {
-          errors.push({
-            row: rowNum,
-            field: "externalCode",
-            fieldLabel: reverseMapping.externalCode || "外部编码",
-            message: `与第 ${prev.rowNum} 行重复 (同订单多明细商品)`,
-            isWarning: true
-          });
-        } else {
-          errors.push({
-            row: rowNum,
-            field: "externalCode",
-            fieldLabel: reverseMapping.externalCode || "外部编码",
-            message: `与第 ${prev.rowNum} 行重复 (但收货信息不一致)`,
-          });
-        }
-      } else {
-        externalCodes.set(codeStr, {
-          rowNum,
-          receiverStore: storeStr,
-          receiverName: nameStr,
-          receiverPhone: phoneStr,
-          receiverAddress: addressStr
-        });
-      }
-    }
-
     // 确保数值类型正确
     if (mappedRow.weight !== undefined && mappedRow.weight !== "") {
       mappedRow.weight = Number(mappedRow.weight);
@@ -187,48 +142,6 @@ export const validateStandardData = (
     const rowErrors = validateRow(mappedRow, rowNum, reverseMapping);
     errors.push(...rowErrors);
 
-    // 外部编码重复性检查
-    if (mappedRow.externalCode) {
-      const codeStr = String(mappedRow.externalCode).trim();
-      const storeStr = String(mappedRow.receiverStore || "").trim();
-      const nameStr = String(mappedRow.receiverName || "").trim();
-      const phoneStr = String(mappedRow.receiverPhone || "").trim();
-      const addressStr = String(mappedRow.receiverAddress || "").trim();
-      
-      if (externalCodes.has(codeStr)) {
-        const prev = externalCodes.get(codeStr)!;
-        const isSameReceiver = 
-          storeStr === prev.receiverStore &&
-          nameStr === prev.receiverName &&
-          phoneStr === prev.receiverPhone &&
-          addressStr === prev.receiverAddress;
-          
-        if (isSameReceiver) {
-          errors.push({
-            row: rowNum,
-            field: "externalCode",
-            fieldLabel: "外部编码",
-            message: `与第 ${prev.rowNum} 行重复 (同订单多明细商品)`,
-            isWarning: true
-          });
-        } else {
-          errors.push({
-            row: rowNum,
-            field: "externalCode",
-            fieldLabel: "外部编码",
-            message: `与第 ${prev.rowNum} 行重复 (但收货信息不一致)`,
-          });
-        }
-      } else {
-        externalCodes.set(codeStr, {
-          rowNum,
-          receiverStore: storeStr,
-          receiverName: nameStr,
-          receiverPhone: phoneStr,
-          receiverAddress: addressStr
-        });
-      }
-    }
 
     validData.push(mappedRow);
   });

@@ -306,9 +306,6 @@ export const DataGrid: React.FC<DataGridProps> = ({
           {errorRowSet.size > 0 && (
             <Tag color="error" style={{ marginLeft: 8 }}>{errorRowSet.size} 行有错误</Tag>
           )}
-          {warningRowSet.size > 0 && (
-            <Tag color="warning" style={{ marginLeft: 8 }}>{warningRowSet.size} 行外部编码重复 (已智能识别为多明细商品合并，不影响提交)</Tag>
-          )}
           {errorRowSet.size === 0 && localData.length > 0 && (
             <Tag color="success" style={{ marginLeft: 8 }}>全部校验通过</Tag>
           )}
@@ -333,7 +330,6 @@ export const DataGrid: React.FC<DataGridProps> = ({
         virtual
         rowClassName={(_, index) => {
           if (errorRowSet.has(index + 1)) return 'ant-table-row-error';
-          if (warningRowSet.has(index + 1)) return 'ant-table-row-warning';
           return '';
         }}
       />

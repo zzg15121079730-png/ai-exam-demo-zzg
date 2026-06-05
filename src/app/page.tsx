@@ -351,7 +351,6 @@ export default function Home() {
               setErrors(eData);
               setStep("preview");
               message.success(`解析完成，共解析出 ${vData.length} 条数据`);
-              checkDuplicatesAsync(vData);
             });
 
           } catch (err: any) {
@@ -395,7 +394,6 @@ export default function Home() {
           setErrors(eData);
           setStep("preview");
           message.success(`解析完成，共解析出 ${vData.length} 条数据`);
-          checkDuplicatesAsync(vData);
         });
       }
     } catch (err: any) {
@@ -405,41 +403,7 @@ export default function Home() {
     }
   };
 
-  // 异步检查数据库外部编码重复
-  const checkDuplicatesAsync = (vData: any[]) => {
-    const codesToCheck = vData.map(r => r.externalCode).filter(Boolean);
-    if (codesToCheck.length === 0) return;
-    
-    fetch("/api/waybills/check-duplicates", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ codes: codesToCheck })
-    })
-    .then(res => res.json())
-    .then(dbData => {
-      if (dbData.duplicates?.length > 0) {
-        setErrors(prev => {
-          const dbErrors: ValidationError[] = [];
-          vData.forEach((row, i) => {
-            if (row.externalCode && dbData.duplicates.includes(row.externalCode)) {
-              if (!prev.find(e => e.row === i + 1 && e.field === "externalCode")) {
-                dbErrors.push({ 
-                  row: i + 1, field: "externalCode", 
-                  fieldLabel: "外部编码", 
-                  message: "与数据库已存在数据重复" 
-                });
-              }
-            }
-          });
-          if (dbErrors.length > 0) {
-            message.warning(`检测到 ${dbErrors.length} 条外部编码与数据库重复`);
-          }
-          return [...prev, ...dbErrors];
-        });
-      }
-    })
-    .catch(() => {});
-  };
+
 
   // ========= 手动配置规则入口 =========
   const handleManualConfigure = () => {
@@ -567,42 +531,10 @@ export default function Home() {
   const handleSubmit = async () => {
     const realErrors = errors.filter(e => !e.isWarning);
     if (realErrors.length > 0) {
-      const dbDupCount = realErrors.filter(e => e.message === "与数据库已存在数据重复").length;
-      const otherCount = realErrors.length - dbDupCount;
-      const parts: string[] = [];
-      if (otherCount > 0) parts.push(`${otherCount} 处数据错误`);
-      if (dbDupCount > 0) parts.push(`${dbDupCount} 条外部编码与数据库重复`);
-      message.error(`还有 ${parts.join("、")}，请先修正后再提交`);
+      message.error(`还有 ${realErrors.length} 处数据错误，请先修正后再提交`);
       return;
     }
     if (validData.length === 0) return;
-    
-    // 提交前再次同步检查数据库重复
-    const codesToCheck = validData.map(r => r.externalCode).filter(Boolean);
-    if (codesToCheck.length > 0) {
-      try {
-        const checkRes = await fetch("/api/waybills/check-duplicates", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ codes: codesToCheck })
-        });
-        const checkData = await checkRes.json();
-        if (checkData.duplicates?.length > 0) {
-          const dbErrors: ValidationError[] = [];
-          validData.forEach((row, i) => {
-            if (row.externalCode && checkData.duplicates.includes(row.externalCode)) {
-              dbErrors.push({
-                row: i + 1, field: "externalCode",
-                fieldLabel: "外部编码", message: "与数据库已存在数据重复",
-              });
-            }
-          });
-          setErrors(prev => [...prev.filter(e => e.message !== "与数据库已存在数据重复"), ...dbErrors]);
-          message.error(`检测到 ${checkData.duplicates.length} 条外部编码与数据库重复，请修改后重试`);
-          return;
-        }
-      } catch (e) {}
-    }
 
     setSubmitting(true);
     setStep("submitting");
