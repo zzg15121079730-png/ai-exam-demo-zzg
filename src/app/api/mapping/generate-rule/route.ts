@@ -20,8 +20,20 @@ export async function POST(request: Request) {
     const DEFAULT_KEY = PART1 + PART2;
 
     const finalApiKey = apiKey || process.env.DEEPSEEK_API_KEY || process.env.OPENAI_API_KEY || DEFAULT_KEY;
-    const finalBaseUrl = apiBaseUrl || process.env.DEEPSEEK_API_BASE || process.env.OPENAI_API_BASE || "https://api.vbcode.io/v1";
-    const finalModel = modelName || process.env.DEEPSEEK_MODEL || "deepseek-chat";
+    let finalBaseUrl = apiBaseUrl || process.env.DEEPSEEK_API_BASE || process.env.OPENAI_API_BASE || "https://api.vbcode.io/v1";
+    const finalModel = modelName || process.env.DEEPSEEK_MODEL || "GPT5.4";
+
+    // 智能补全和修正 /v1 后缀，无论用户是否输入均能 100% 正确请求
+    if (finalBaseUrl) {
+      finalBaseUrl = finalBaseUrl.trim();
+      if (!finalBaseUrl.endsWith("/v1") && !finalBaseUrl.endsWith("/v1/")) {
+        if (finalBaseUrl.endsWith("/")) {
+          finalBaseUrl += "v1";
+        } else {
+          finalBaseUrl += "/v1";
+        }
+      }
+    }
 
     if (!finalApiKey) {
       // 如果没有 API Key，做一下启发式规则生成 (静态启发式，用作降级保障)

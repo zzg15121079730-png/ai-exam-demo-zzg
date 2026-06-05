@@ -67,7 +67,7 @@ export default function Home() {
     setAiConfig({
       apiKey: savedApiKey !== null ? savedApiKey : "sk-KWEokQJRaKCjsBEWGf2XdHDlDY6oGQiczo23Gue4fa5P7ofR",
       apiBaseUrl: savedBaseUrl || "https://api.vbcode.io/v1",
-      modelName: savedModel || "deepseek-chat"
+      modelName: savedModel || "GPT5.4"
     });
     fetchRules();
     fetchHistory();
