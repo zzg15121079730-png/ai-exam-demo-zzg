@@ -120,34 +120,59 @@ function buildAutoMapping(headers: string[]): Record<number, string> {
 function extractFooterInfo(aoa: any[][], startRow: number): Record<string, string> {
   const meta: Record<string, string> = {};
   
+  // 扩充的正则匹配库
+  const storeKeywords = "调入门店|调拨门店|收货门店|目标门店|收货店|收货单位|收货机构|收货方|收货店名|收货门店名称|到货门店|分店|调入仓库";
+  const nameKeywords = "联系人|收货人|收件人|提货人|到货联系人|收货方联系人|联系人姓名|收货人姓名";
+  const phoneKeywords = "联系电话|收货电话|收件电话|收货人电话|电话|手机|联系手机|收货手机|收件人电话";
+  const addressKeywords = "收货地址|收件地址|配送地址|到货地址|收货方地址|收件人地址|送货地址|调入地址";
+
+  const allKeywords = [storeKeywords, nameKeywords, phoneKeywords, addressKeywords].join("|");
+
   for (let r = startRow; r < aoa.length; r++) {
     const row = aoa[r] || [];
     for (let c = 0; c < row.length; c++) {
       const cellStr = String(row[c] || '').trim();
       if (!cellStr) continue;
       
-      // 检测 "关键字：值" 在同一个格子里
-      const kvMatch = cellStr.match(/^(联系人|收货人|收件人|联系电话|收货电话|收件电话|收货地址|收件地址|配送地址|收货门店|目标门店)[：:]\s*(.+)/);
+      // 1. 检测 "关键字：值" 在同一个格子里
+      const kvRegex = new RegExp(`^(${allKeywords})[：:]\\s*(.+)`, "i");
+      const kvMatch = cellStr.match(kvRegex);
       if (kvMatch) {
         const key = kvMatch[1];
         const val = kvMatch[2].trim();
-        if (/联系人|收货人|收件人/.test(key) && !meta.receiverName) meta.receiverName = val;
-        else if (/电话/.test(key) && !meta.receiverPhone) meta.receiverPhone = val;
-        else if (/地址/.test(key) && !meta.receiverAddress) meta.receiverAddress = val;
-        else if (/门店/.test(key) && !meta.receiverStore) meta.receiverStore = val;
+        
+        // 如果提取的值是类似 "▶ 调拨记录" 的指示符或者包含大量特殊符号，不作为最终值
+        if (val && !val.startsWith("▶")) {
+          if (new RegExp(storeKeywords, "i").test(key) && !meta.receiverStore) meta.receiverStore = val;
+          else if (new RegExp(nameKeywords, "i").test(key) && !meta.receiverName) meta.receiverName = val;
+          else if (new RegExp(phoneKeywords, "i").test(key) && !meta.receiverPhone) meta.receiverPhone = val;
+          else if (new RegExp(addressKeywords, "i").test(key) && !meta.receiverAddress) meta.receiverAddress = val;
+        }
         continue;
       }
       
-      // 检测 "关键字：" 在一个格子，值在下一个格子
-      const labelMatch = cellStr.match(/^(联系人|收货人|收件人|联系电话|收货电话|收件电话|收货地址|收件地址|配送地址|收货门店|目标门店)[：:]?\s*$/);
-      if (labelMatch && c + 1 < row.length) {
-        const nextVal = String(row[c + 1] || '').trim();
-        if (nextVal) {
-          const key = labelMatch[1];
-          if (/联系人|收货人|收件人/.test(key) && !meta.receiverName) meta.receiverName = nextVal;
-          else if (/电话/.test(key) && !meta.receiverPhone) meta.receiverPhone = nextVal;
-          else if (/地址/.test(key) && !meta.receiverAddress) meta.receiverAddress = nextVal;
-          else if (/门店/.test(key) && !meta.receiverStore) meta.receiverStore = nextVal;
+      // 2. 检测 "关键字：" 或 "关键字" 在一个格子，值在后面临近几个格子（最多往右找 3 格，防止跨越太远）
+      const labelRegex = new RegExp(`^(${allKeywords})[：:]?\\s*$`, "i");
+      const labelMatch = cellStr.match(labelRegex);
+      if (labelMatch) {
+        const key = labelMatch[1];
+        let foundVal = "";
+        
+        for (let offset = 1; offset <= 3; offset++) {
+          if (c + offset < row.length) {
+            const tempVal = String(row[c + offset] || '').trim();
+            if (tempVal && !new RegExp(`^(${allKeywords})`).test(tempVal)) {
+              foundVal = tempVal;
+              break;
+            }
+          }
+        }
+        
+        if (foundVal && !foundVal.startsWith("▶")) {
+          if (new RegExp(storeKeywords, "i").test(key) && !meta.receiverStore) meta.receiverStore = foundVal;
+          else if (new RegExp(nameKeywords, "i").test(key) && !meta.receiverName) meta.receiverName = foundVal;
+          else if (new RegExp(phoneKeywords, "i").test(key) && !meta.receiverPhone) meta.receiverPhone = foundVal;
+          else if (new RegExp(addressKeywords, "i").test(key) && !meta.receiverAddress) meta.receiverAddress = foundVal;
         }
       }
     }
@@ -207,20 +232,40 @@ export class RuleEngine {
           
           // 提取卡片级字段（收货人等）
           const cardMeta: Record<string, any> = {};
+          
+          // 通用扫描卡片区域内所有的收货信息（做回补）
+          const scannedMeta = extractFooterInfo(aoa.slice(startIdx, endIdx), 0);
+
           cardRules.fields.forEach(f => {
             const relRow = f.relativeCell.row - 1;
             const relCol = f.relativeCell.col - 1;
             const tr = startIdx + relRow;
             if (tr < aoa.length && relCol < (aoa[tr]?.length || 0)) {
-              cardMeta[f.field] = String(aoa[tr][relCol] || '').trim();
+              let val = String(aoa[tr][relCol] || '').trim();
+              
+              // 自动剥离冒号：
+              if (val.includes("：") || val.includes(":")) {
+                const parts = val.split(/[：:]/);
+                val = parts.slice(1).join("：").trim();
+              }
+              
+              // 脏数据识别：如果取到的值是分隔符、字段名或标签，则视为空
+              const isLabel = /^(调入门店|调拨门店|收货门店|目标门店|收货店|收货单位|收货机构|收货方|联系人|收货人|收件人|提货人|联系电话|收货电话|收件电话|电话|手机|收货地址|收件地址|配送地址|地址)[：:]?$/i.test(val);
+              const isStartMarker = val.startsWith("▶") || val.startsWith("►");
+              
+              if (val && !isLabel && !isStartMarker) {
+                cardMeta[f.field] = val;
+              }
             }
           });
 
-          // 如果卡片字段里没有提取到收货信息，尝试通用扫描
-          if (!cardMeta.receiverStore && !cardMeta.receiverName) {
-            const footerMeta = extractFooterInfo(aoa.slice(startIdx, endIdx), 0);
-            Object.assign(cardMeta, footerMeta);
-          }
+          // 用通用扫描提取出来的高精度信息，进行安全回补与覆盖
+          const fieldsToBackfill: Array<keyof typeof cardMeta> = ["receiverStore", "receiverName", "receiverPhone", "receiverAddress"];
+          fieldsToBackfill.forEach(key => {
+            if (scannedMeta[key] && (!cardMeta[key] || cardMeta[key] === "")) {
+              cardMeta[key] = scannedMeta[key];
+            }
+          });
 
           // 解析卡片内小表
           const tableStartIdx = startIdx + (cardRules.tableStartRowOffset || 3);
