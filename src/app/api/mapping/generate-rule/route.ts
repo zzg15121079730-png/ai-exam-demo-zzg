@@ -40,7 +40,7 @@ export async function POST(request: Request) {
     const systemPrompt = `你是物流系统的规则解析专家。根据文件样本，生成一套解析规则 JSON (RuleConfig)。
 
 ### 标准字段（只有这 10 个，不要添加其他字段）：
-- externalCode: 外部编码/订单号/配送单号
+- externalCode: 外部编码/订单号/配送单号/调拨单号/单据编号/单据号
 - receiverStore: 收货门店/机构名称
 - receiverName: 收件人姓名
 - receiverPhone: 收件人电话
@@ -123,10 +123,10 @@ export async function POST(request: Request) {
 6. mappings中isGuess为true表示AI推测的映射
 
 ### 调拨单特殊模式(极其常见，务必识别)：
-- 调拨单的收件人/电话/地址/门店通常不在数据表头中，而是在表格下方或上方以"关键字: 值"的格式单独出现
-- 常见关键词举例："收货门店"、"调入门店"、"联系人"、"联系电话"、"收货地址"、"收件人"、"收件电话"
+- 调拨单的调拨单号/单据编号、收件人/电话/地址/门店通常不在数据表头中，而是在表格下方或上方以"关键字: 值"的格式单独出现
+- 常见关键词举例："调拨单号"、"单据编号"、"单据号"、"收货门店"、"调入门店"、"联系人"、"联系电话"、"收货地址"、"收件人"、"收件电话"
 - 这种情况必须启用 footerExtraction（或 headerExtraction），用 keyword-offset 方式提取
-- 如果表头中完全没有收件人/电话相关列，一定要在样本的尾部行中搜索这些关键字`;
+- 如果表头中完全没有收件人/电话/单号相关列，一定要在样本的头部或尾部行中搜索这些关键字`;
 
     // 裁剪样本 — 前15行(表头+数据) + 后10行(尾部收货信息) 确保AI能看到全貌
     let trimmedSample = excelSample;
@@ -214,7 +214,7 @@ function generateHeuristicRule(fileType: string, excelSample: any, _sampleText: 
 
   // 10个标准字段的别名库
   const fields = [
-    { key: "externalCode", aliases: ["订单号", "单号", "编号", "外部编码", "配送单号", "配送汇总单号", "客户单号"] },
+    { key: "externalCode", aliases: ["订单号", "单号", "编号", "外部编码", "配送单号", "配送汇总单号", "客户单号", "调拨单号", "调拨编号", "单据编号", "申请单号", "单据号"] },
     { key: "receiverStore", aliases: ["门店", "收货门店", "机构", "门店名称", "收货单位", "调入门店", "目标门店", "收货机构", "调拨门店", "到货门店", "收货方"] },
     { key: "receiverName", aliases: ["收货人", "收件人", "姓名", "收货联系人", "联系人", "收货方联系人", "到货联系人", "提货人"] },
     { key: "receiverPhone", aliases: ["电话", "手机", "联系方式", "联系电话", "收货电话", "收件电话", "收货方电话", "到货电话"] },
