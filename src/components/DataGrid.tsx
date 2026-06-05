@@ -74,6 +74,8 @@ const EditableCell = React.memo(({
 
 
   if (editing) {
+    const bg = error ? (error.isWarning ? '#fffbe6' : '#fff2f0') : 'transparent';
+    const textColor = error ? (error.isWarning ? '#d97b00' : '#ff4d4f') : 'inherit';
     return (
       <div>
         <Input
@@ -82,18 +84,19 @@ const EditableCell = React.memo(({
           onChange={(e) => setLocalVal(e.target.value)}
           onBlur={finishEdit}
           onKeyDown={handleKeyDown}
-          status={error ? "error" : ""}
+          status={error && !error.isWarning ? "error" : ""}
           variant="borderless"
           size="small"
           style={{
             width: '100%',
-            backgroundColor: error ? '#fff2f0' : 'transparent',
+            backgroundColor: bg,
+            color: textColor,
             borderRadius: 2,
             padding: '2px 6px',
           }}
         />
         {error && (
-          <div style={{ color: '#ff4d4f', fontSize: 11, lineHeight: '16px', paddingLeft: 6 }}>
+          <div style={{ color: textColor, fontSize: 11, lineHeight: '16px', paddingLeft: 6 }}>
             {error.message}
           </div>
         )}
@@ -102,6 +105,8 @@ const EditableCell = React.memo(({
   }
 
   // 展示模式 — 纯文本
+  const bg = error ? (error.isWarning ? '#fffbe6' : '#fff2f0') : 'transparent';
+  const textColor = error ? (error.isWarning ? '#d97b00' : '#ff4d4f') : 'inherit';
   return (
     <div
       data-cell={`${rowIndex}-${colIndex}`}
@@ -111,17 +116,19 @@ const EditableCell = React.memo(({
         minHeight: 22,
         padding: '2px 6px',
         cursor: 'text',
-        backgroundColor: error ? '#fff2f0' : 'transparent',
+        backgroundColor: bg,
         borderRadius: 2,
         whiteSpace: 'nowrap',
         overflow: 'hidden',
         textOverflow: 'ellipsis',
       }}
     >
-      {localVal || <span style={{ color: '#ccc' }}>点击编辑</span>}
+      <span style={{ color: localVal ? 'inherit' : '#ccc' }}>
+        {localVal || '点击编辑'}
+      </span>
       {error && (
-        <div style={{ color: '#ff4d4f', fontSize: 11, lineHeight: '16px' }}>
-          {error.message}
+        <div style={{ color: textColor, fontSize: 11, lineHeight: '16px', marginTop: 2 }}>
+          {error.isWarning ? `⚠ ${error.message}` : `❌ ${error.message}`}
         </div>
       )}
     </div>
@@ -166,7 +173,8 @@ export const DataGrid: React.FC<DataGridProps> = ({
     return map;
   }, [errors]);
 
-  const errorRowSet = useMemo(() => new Set(errors.map(e => e.row)), [errors]);
+  const errorRowSet = useMemo(() => new Set(errors.filter(e => !e.isWarning).map(e => e.row)), [errors]);
+  const warningRowSet = useMemo(() => new Set(errors.filter(e => e.isWarning).map(e => e.row)), [errors]);
 
   // ★ 核心修复：编辑时更新 localData，然后通知父组件校验
   const handleCellChange = useCallback((index: number, field: string, value: string) => {
@@ -219,10 +227,11 @@ export const DataGrid: React.FC<DataGridProps> = ({
       align: "center" as const,
       render: (_: any, __: any, index: number) => {
         const hasError = errorRowSet.has(index + 1);
+        const hasWarning = warningRowSet.has(index + 1);
         return (
           <span style={{
-            color: hasError ? '#ff4d4f' : '#666',
-            fontWeight: hasError ? 'bold' : 'normal'
+            color: hasError ? '#ff4d4f' : hasWarning ? '#fa8c16' : '#666',
+            fontWeight: (hasError || hasWarning) ? 'bold' : 'normal'
           }}>
             {index + 1}
           </span>
@@ -264,8 +273,15 @@ export const DataGrid: React.FC<DataGridProps> = ({
       render: (_: any, __: any, index: number) => {
         const rowErrs = errorMap[index + 1];
         if (rowErrs) {
-          const count = Object.keys(rowErrs).length;
-          return <Tag color="error" style={{ margin: 0 }}>{count}处错误</Tag>;
+          const errsArray = Object.values(rowErrs);
+          const errCount = errsArray.filter(e => !e.isWarning).length;
+          const warnCount = errsArray.filter(e => e.isWarning).length;
+          if (errCount > 0) {
+            return <Tag color="error" style={{ margin: 0 }}>{errCount}处错误</Tag>;
+          }
+          if (warnCount > 0) {
+            return <Tag color="warning" style={{ margin: 0 }}>{warnCount}处重复</Tag>;
+          }
         }
         return <Tag color="success" style={{ margin: 0 }}>通过</Tag>;
       }
@@ -290,6 +306,9 @@ export const DataGrid: React.FC<DataGridProps> = ({
           {errorRowSet.size > 0 && (
             <Tag color="error" style={{ marginLeft: 8 }}>{errorRowSet.size} 行有错误</Tag>
           )}
+          {warningRowSet.size > 0 && (
+            <Tag color="warning" style={{ marginLeft: 8 }}>{warningRowSet.size} 行外部编码重复 (已智能识别为多明细商品合并，不影响提交)</Tag>
+          )}
           {errorRowSet.size === 0 && localData.length > 0 && (
             <Tag color="success" style={{ marginLeft: 8 }}>全部校验通过</Tag>
           )}
@@ -313,7 +332,9 @@ export const DataGrid: React.FC<DataGridProps> = ({
         bordered
         virtual
         rowClassName={(_, index) => {
-          return errorRowSet.has(index + 1) ? 'ant-table-row-error' : '';
+          if (errorRowSet.has(index + 1)) return 'ant-table-row-error';
+          if (warningRowSet.has(index + 1)) return 'ant-table-row-warning';
+          return '';
         }}
       />
 
@@ -323,6 +344,12 @@ export const DataGrid: React.FC<DataGridProps> = ({
         }
         .ant-table-row-error:hover td {
           background-color: #ffe8e6 !important;
+        }
+        .ant-table-row-warning td {
+          background-color: #fffbe6 !important;
+        }
+        .ant-table-row-warning:hover td {
+          background-color: #fff7d6 !important;
         }
       `}</style>
     </div>

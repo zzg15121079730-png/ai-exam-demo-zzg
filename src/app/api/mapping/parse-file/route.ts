@@ -125,21 +125,6 @@ ${textToParse}`;
             if (jsonMatch) {
               const rawData = JSON.parse(jsonMatch[1] || jsonMatch[0]);
               
-              // 获取规则模板中的默认值映射，实现默认值补足
-              const defaultValueMap: Record<string, string> = {};
-              if (rule && Array.isArray(rule.mappings)) {
-                rule.mappings.forEach(m => {
-                  if (m.field && m.defaultValue) {
-                    defaultValueMap[m.field] = m.defaultValue;
-                  }
-                });
-              }
-
-              const getValWithDefault = (val: any, fieldKey: string) => {
-                const cleanVal = String(val || "").trim();
-                return cleanVal || defaultValueMap[fieldKey] || "";
-              };
-
               // 扁平化数据为 10 个标准字段的行
               const flatRows: any[] = [];
               const orders = Array.isArray(rawData) ? rawData : [rawData];
@@ -149,16 +134,16 @@ ${textToParse}`;
                 const items = order.items || [];
                 for (const item of items) {
                   flatRows.push({
-                    externalCode: getValWithDefault(info.externalCode, "externalCode"),
-                    receiverStore: getValWithDefault(info.receiverStore, "receiverStore"),
-                    receiverName: getValWithDefault(info.receiverName, "receiverName"),
-                    receiverPhone: getValWithDefault(info.receiverPhone, "receiverPhone"),
-                    receiverAddress: getValWithDefault(info.receiverAddress, "receiverAddress"),
-                    skuCode: getValWithDefault(item.skuCode, "skuCode"),
-                    skuName: getValWithDefault(item.skuName, "skuName"),
-                    quantity: parseInt(getValWithDefault(item.quantity, "quantity") || "0", 10) || 0,
-                    skuSpec: getValWithDefault(item.skuSpec, "skuSpec"),
-                    remark: getValWithDefault(item.remark, "remark")
+                    externalCode: String(info.externalCode || "").trim(),
+                    receiverStore: String(info.receiverStore || "").trim(),
+                    receiverName: String(info.receiverName || "").trim(),
+                    receiverPhone: String(info.receiverPhone || "").trim(),
+                    receiverAddress: String(info.receiverAddress || "").trim(),
+                    skuCode: String(item.skuCode || "").trim(),
+                    skuName: String(item.skuName || "").trim(),
+                    quantity: parseInt(String(item.quantity || "0"), 10) || 0,
+                    skuSpec: String(item.skuSpec || "").trim(),
+                    remark: String(item.remark || "").trim()
                   });
                 }
               }

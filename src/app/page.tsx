@@ -458,6 +458,7 @@ export default function Home() {
         if (saveRes.ok) {
           const saved = await saveRes.json();
           fetchRules();
+          if (saved.rule?.id) setSelectedRuleId(saved.rule.id);
         }
       }).catch(() => {});
 
@@ -540,11 +541,11 @@ export default function Home() {
     XLSX.writeFile(workbook, "导出数据.xlsx");
   };
 
-  // ========= 提交下单 =========
   const handleSubmit = async () => {
-    if (errors.length > 0) {
-      const dbDupCount = errors.filter(e => e.message === "与数据库已存在数据重复").length;
-      const otherCount = errors.length - dbDupCount;
+    const realErrors = errors.filter(e => !e.isWarning);
+    if (realErrors.length > 0) {
+      const dbDupCount = realErrors.filter(e => e.message === "与数据库已存在数据重复").length;
+      const otherCount = realErrors.length - dbDupCount;
       const parts: string[] = [];
       if (otherCount > 0) parts.push(`${otherCount} 处数据错误`);
       if (dbDupCount > 0) parts.push(`${dbDupCount} 条外部编码与数据库重复`);
@@ -626,9 +627,10 @@ export default function Home() {
     }
   };
 
-  // 错误汇总两列分流
-  const col1Errors = errors.slice(0, Math.ceil(errors.length / 2));
-  const col2Errors = errors.slice(Math.ceil(errors.length / 2));
+  // 错误汇总两列分流 (仅针对非 Warning 的严重错误)
+  const realErrors = errors.filter(e => !e.isWarning);
+  const col1Errors = realErrors.slice(0, Math.ceil(realErrors.length / 2));
+  const col2Errors = realErrors.slice(Math.ceil(realErrors.length / 2));
 
   // 已导入运单列表列定义
   const historyColumns = [
@@ -998,8 +1000,8 @@ export default function Home() {
             ) : (
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <div>
-                  {errors.length > 0 && (
-                    <Text type="danger" style={{ fontWeight: 'bold' }}>⚠ 当前仍有 {errors.length} 处校验错误，请根据表格内高亮提示修正后再提交下单</Text>
+                  {realErrors.length > 0 && (
+                    <Text type="danger" style={{ fontWeight: 'bold' }}>⚠ 当前仍有 {realErrors.length} 处物理校验错误，请根据表格内高亮提示修正后再提交下单</Text>
                   )}
                 </div>
                 <Space>
@@ -1013,11 +1015,11 @@ export default function Home() {
                     type="primary" 
                     onClick={handleSubmit} 
                     loading={step === "submitting"}
-                    disabled={errors.length > 0 || validData.length === 0}
+                    disabled={realErrors.length > 0 || validData.length === 0}
                     size="large"
                     style={{ backgroundColor: '#0fc6c2', borderColor: '#0fc6c2' }}
                   >
-                    {errors.length > 0 ? `修正 ${errors.length} 处错误后提交` : "✅ 确认提交下单"}
+                    {realErrors.length > 0 ? `修正 ${realErrors.length} 处错误后提交` : "✅ 确认提交下单"}
                   </Button>
                 </Space>
               </div>
@@ -1069,20 +1071,20 @@ export default function Home() {
               <div style={{ marginBottom: 12, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <Space>
                   <Tag color="cyan">当前共 {validData.length} 行</Tag>
-                  {errors.length > 0 && (
-                    <Tag color="error">含有错误的行数: {new Set(errors.map(e => e.row)).size} 行</Tag>
+                  {realErrors.length > 0 && (
+                    <Tag color="error">含有错误的行数: {new Set(realErrors.map(e => e.row)).size} 行</Tag>
                   )}
                 </Space>
-                {errors.length > 0 && (
+                {realErrors.length > 0 && (
                   <Button 
                     type="primary" 
                     danger 
                     icon={<DeleteOutlined />}
                     onClick={() => {
-                      const errorRowIndexes = new Set(errors.map(e => e.row - 1));
+                      const errorRowIndexes = new Set(realErrors.map(e => e.row - 1));
                       const cleanedData = validData.filter((_, idx) => !errorRowIndexes.has(idx));
                       handleDataChange(cleanedData);
-                      message.success(`已删除所有含有校验错误的行数据`);
+                      message.success(`已删除所有含有物理校验错误的行数据`);
                     }}
                   >
                     一键删除所有不合规行
@@ -1106,7 +1108,7 @@ export default function Home() {
               />
               
               {/* 错误汇总面板 */}
-              {errors.length > 0 && (
+              {realErrors.length > 0 && (
                 <div style={{ 
                   marginTop: 16, 
                   backgroundColor: '#fff2f0', 
@@ -1115,7 +1117,7 @@ export default function Home() {
                   padding: '16px 20px' 
                 }}>
                   <div style={{ color: '#cf1322', fontWeight: 'bold', fontSize: 14, marginBottom: 8 }}>
-                    ❌ 行内异常与物理约束报错汇总 ({errors.length} 处)
+                    ❌ 行内异常与物理约束报错汇总 ({realErrors.length} 处)
                   </div>
                   <Row gutter={16}>
                     <Col span={12}>
