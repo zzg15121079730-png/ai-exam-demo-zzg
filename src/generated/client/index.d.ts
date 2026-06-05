@@ -942,31 +942,24 @@ export namespace Prisma {
   }
 
   export type WaybillAvgAggregateOutputType = {
-    weight: number | null
     quantity: number | null
   }
 
   export type WaybillSumAggregateOutputType = {
-    weight: number | null
     quantity: number | null
   }
 
   export type WaybillMinAggregateOutputType = {
     id: string | null
     externalCode: string | null
-    senderName: string | null
-    senderPhone: string | null
-    senderAddress: string | null
     receiverStore: string | null
     receiverName: string | null
     receiverPhone: string | null
     receiverAddress: string | null
     skuCode: string | null
     skuName: string | null
-    skuSpec: string | null
-    weight: number | null
     quantity: number | null
-    tempZone: string | null
+    skuSpec: string | null
     remark: string | null
     batchId: string | null
     createdAt: Date | null
@@ -976,19 +969,14 @@ export namespace Prisma {
   export type WaybillMaxAggregateOutputType = {
     id: string | null
     externalCode: string | null
-    senderName: string | null
-    senderPhone: string | null
-    senderAddress: string | null
     receiverStore: string | null
     receiverName: string | null
     receiverPhone: string | null
     receiverAddress: string | null
     skuCode: string | null
     skuName: string | null
-    skuSpec: string | null
-    weight: number | null
     quantity: number | null
-    tempZone: string | null
+    skuSpec: string | null
     remark: string | null
     batchId: string | null
     createdAt: Date | null
@@ -998,19 +986,14 @@ export namespace Prisma {
   export type WaybillCountAggregateOutputType = {
     id: number
     externalCode: number
-    senderName: number
-    senderPhone: number
-    senderAddress: number
     receiverStore: number
     receiverName: number
     receiverPhone: number
     receiverAddress: number
     skuCode: number
     skuName: number
-    skuSpec: number
-    weight: number
     quantity: number
-    tempZone: number
+    skuSpec: number
     remark: number
     batchId: number
     createdAt: number
@@ -1020,31 +1003,24 @@ export namespace Prisma {
 
 
   export type WaybillAvgAggregateInputType = {
-    weight?: true
     quantity?: true
   }
 
   export type WaybillSumAggregateInputType = {
-    weight?: true
     quantity?: true
   }
 
   export type WaybillMinAggregateInputType = {
     id?: true
     externalCode?: true
-    senderName?: true
-    senderPhone?: true
-    senderAddress?: true
     receiverStore?: true
     receiverName?: true
     receiverPhone?: true
     receiverAddress?: true
     skuCode?: true
     skuName?: true
-    skuSpec?: true
-    weight?: true
     quantity?: true
-    tempZone?: true
+    skuSpec?: true
     remark?: true
     batchId?: true
     createdAt?: true
@@ -1054,19 +1030,14 @@ export namespace Prisma {
   export type WaybillMaxAggregateInputType = {
     id?: true
     externalCode?: true
-    senderName?: true
-    senderPhone?: true
-    senderAddress?: true
     receiverStore?: true
     receiverName?: true
     receiverPhone?: true
     receiverAddress?: true
     skuCode?: true
     skuName?: true
-    skuSpec?: true
-    weight?: true
     quantity?: true
-    tempZone?: true
+    skuSpec?: true
     remark?: true
     batchId?: true
     createdAt?: true
@@ -1076,19 +1047,14 @@ export namespace Prisma {
   export type WaybillCountAggregateInputType = {
     id?: true
     externalCode?: true
-    senderName?: true
-    senderPhone?: true
-    senderAddress?: true
     receiverStore?: true
     receiverName?: true
     receiverPhone?: true
     receiverAddress?: true
     skuCode?: true
     skuName?: true
-    skuSpec?: true
-    weight?: true
     quantity?: true
-    tempZone?: true
+    skuSpec?: true
     remark?: true
     batchId?: true
     createdAt?: true
@@ -1185,19 +1151,14 @@ export namespace Prisma {
   export type WaybillGroupByOutputType = {
     id: string
     externalCode: string | null
-    senderName: string
-    senderPhone: string
-    senderAddress: string
     receiverStore: string | null
-    receiverName: string
-    receiverPhone: string
-    receiverAddress: string
+    receiverName: string | null
+    receiverPhone: string | null
+    receiverAddress: string | null
     skuCode: string | null
     skuName: string | null
+    quantity: number | null
     skuSpec: string | null
-    weight: number
-    quantity: number
-    tempZone: string
     remark: string | null
     batchId: string
     createdAt: Date
@@ -1226,19 +1187,14 @@ export namespace Prisma {
   export type WaybillSelect<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
     id?: boolean
     externalCode?: boolean
-    senderName?: boolean
-    senderPhone?: boolean
-    senderAddress?: boolean
     receiverStore?: boolean
     receiverName?: boolean
     receiverPhone?: boolean
     receiverAddress?: boolean
     skuCode?: boolean
     skuName?: boolean
-    skuSpec?: boolean
-    weight?: boolean
     quantity?: boolean
-    tempZone?: boolean
+    skuSpec?: boolean
     remark?: boolean
     batchId?: boolean
     createdAt?: boolean
@@ -1248,19 +1204,14 @@ export namespace Prisma {
   export type WaybillSelectCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
     id?: boolean
     externalCode?: boolean
-    senderName?: boolean
-    senderPhone?: boolean
-    senderAddress?: boolean
     receiverStore?: boolean
     receiverName?: boolean
     receiverPhone?: boolean
     receiverAddress?: boolean
     skuCode?: boolean
     skuName?: boolean
-    skuSpec?: boolean
-    weight?: boolean
     quantity?: boolean
-    tempZone?: boolean
+    skuSpec?: boolean
     remark?: boolean
     batchId?: boolean
     createdAt?: boolean
@@ -1270,19 +1221,14 @@ export namespace Prisma {
   export type WaybillSelectScalar = {
     id?: boolean
     externalCode?: boolean
-    senderName?: boolean
-    senderPhone?: boolean
-    senderAddress?: boolean
     receiverStore?: boolean
     receiverName?: boolean
     receiverPhone?: boolean
     receiverAddress?: boolean
     skuCode?: boolean
     skuName?: boolean
-    skuSpec?: boolean
-    weight?: boolean
     quantity?: boolean
-    tempZone?: boolean
+    skuSpec?: boolean
     remark?: boolean
     batchId?: boolean
     createdAt?: boolean
@@ -1296,19 +1242,14 @@ export namespace Prisma {
     scalars: $Extensions.GetPayloadResult<{
       id: string
       externalCode: string | null
-      senderName: string
-      senderPhone: string
-      senderAddress: string
       receiverStore: string | null
-      receiverName: string
-      receiverPhone: string
-      receiverAddress: string
+      receiverName: string | null
+      receiverPhone: string | null
+      receiverAddress: string | null
       skuCode: string | null
       skuName: string | null
+      quantity: number | null
       skuSpec: string | null
-      weight: number
-      quantity: number
-      tempZone: string
       remark: string | null
       batchId: string
       createdAt: Date
@@ -1708,19 +1649,14 @@ export namespace Prisma {
   interface WaybillFieldRefs {
     readonly id: FieldRef<"Waybill", 'String'>
     readonly externalCode: FieldRef<"Waybill", 'String'>
-    readonly senderName: FieldRef<"Waybill", 'String'>
-    readonly senderPhone: FieldRef<"Waybill", 'String'>
-    readonly senderAddress: FieldRef<"Waybill", 'String'>
     readonly receiverStore: FieldRef<"Waybill", 'String'>
     readonly receiverName: FieldRef<"Waybill", 'String'>
     readonly receiverPhone: FieldRef<"Waybill", 'String'>
     readonly receiverAddress: FieldRef<"Waybill", 'String'>
     readonly skuCode: FieldRef<"Waybill", 'String'>
     readonly skuName: FieldRef<"Waybill", 'String'>
-    readonly skuSpec: FieldRef<"Waybill", 'String'>
-    readonly weight: FieldRef<"Waybill", 'Float'>
     readonly quantity: FieldRef<"Waybill", 'Int'>
-    readonly tempZone: FieldRef<"Waybill", 'String'>
+    readonly skuSpec: FieldRef<"Waybill", 'String'>
     readonly remark: FieldRef<"Waybill", 'String'>
     readonly batchId: FieldRef<"Waybill", 'String'>
     readonly createdAt: FieldRef<"Waybill", 'DateTime'>
@@ -2920,19 +2856,14 @@ export namespace Prisma {
   export const WaybillScalarFieldEnum: {
     id: 'id',
     externalCode: 'externalCode',
-    senderName: 'senderName',
-    senderPhone: 'senderPhone',
-    senderAddress: 'senderAddress',
     receiverStore: 'receiverStore',
     receiverName: 'receiverName',
     receiverPhone: 'receiverPhone',
     receiverAddress: 'receiverAddress',
     skuCode: 'skuCode',
     skuName: 'skuName',
-    skuSpec: 'skuSpec',
-    weight: 'weight',
     quantity: 'quantity',
-    tempZone: 'tempZone',
+    skuSpec: 'skuSpec',
     remark: 'remark',
     batchId: 'batchId',
     createdAt: 'createdAt',
@@ -2998,20 +2929,6 @@ export namespace Prisma {
 
 
   /**
-   * Reference to a field of type 'Float'
-   */
-  export type FloatFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'Float'>
-    
-
-
-  /**
-   * Reference to a field of type 'Float[]'
-   */
-  export type ListFloatFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'Float[]'>
-    
-
-
-  /**
    * Reference to a field of type 'Int'
    */
   export type IntFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'Int'>
@@ -3037,6 +2954,20 @@ export namespace Prisma {
    */
   export type ListDateTimeFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'DateTime[]'>
     
+
+
+  /**
+   * Reference to a field of type 'Float'
+   */
+  export type FloatFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'Float'>
+    
+
+
+  /**
+   * Reference to a field of type 'Float[]'
+   */
+  export type ListFloatFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'Float[]'>
+    
   /**
    * Deep Input Types
    */
@@ -3048,19 +2979,14 @@ export namespace Prisma {
     NOT?: WaybillWhereInput | WaybillWhereInput[]
     id?: StringFilter<"Waybill"> | string
     externalCode?: StringNullableFilter<"Waybill"> | string | null
-    senderName?: StringFilter<"Waybill"> | string
-    senderPhone?: StringFilter<"Waybill"> | string
-    senderAddress?: StringFilter<"Waybill"> | string
     receiverStore?: StringNullableFilter<"Waybill"> | string | null
-    receiverName?: StringFilter<"Waybill"> | string
-    receiverPhone?: StringFilter<"Waybill"> | string
-    receiverAddress?: StringFilter<"Waybill"> | string
+    receiverName?: StringNullableFilter<"Waybill"> | string | null
+    receiverPhone?: StringNullableFilter<"Waybill"> | string | null
+    receiverAddress?: StringNullableFilter<"Waybill"> | string | null
     skuCode?: StringNullableFilter<"Waybill"> | string | null
     skuName?: StringNullableFilter<"Waybill"> | string | null
+    quantity?: IntNullableFilter<"Waybill"> | number | null
     skuSpec?: StringNullableFilter<"Waybill"> | string | null
-    weight?: FloatFilter<"Waybill"> | number
-    quantity?: IntFilter<"Waybill"> | number
-    tempZone?: StringFilter<"Waybill"> | string
     remark?: StringNullableFilter<"Waybill"> | string | null
     batchId?: StringFilter<"Waybill"> | string
     createdAt?: DateTimeFilter<"Waybill"> | Date | string
@@ -3070,19 +2996,14 @@ export namespace Prisma {
   export type WaybillOrderByWithRelationInput = {
     id?: SortOrder
     externalCode?: SortOrderInput | SortOrder
-    senderName?: SortOrder
-    senderPhone?: SortOrder
-    senderAddress?: SortOrder
     receiverStore?: SortOrderInput | SortOrder
-    receiverName?: SortOrder
-    receiverPhone?: SortOrder
-    receiverAddress?: SortOrder
+    receiverName?: SortOrderInput | SortOrder
+    receiverPhone?: SortOrderInput | SortOrder
+    receiverAddress?: SortOrderInput | SortOrder
     skuCode?: SortOrderInput | SortOrder
     skuName?: SortOrderInput | SortOrder
+    quantity?: SortOrderInput | SortOrder
     skuSpec?: SortOrderInput | SortOrder
-    weight?: SortOrder
-    quantity?: SortOrder
-    tempZone?: SortOrder
     remark?: SortOrderInput | SortOrder
     batchId?: SortOrder
     createdAt?: SortOrder
@@ -3095,19 +3016,14 @@ export namespace Prisma {
     OR?: WaybillWhereInput[]
     NOT?: WaybillWhereInput | WaybillWhereInput[]
     externalCode?: StringNullableFilter<"Waybill"> | string | null
-    senderName?: StringFilter<"Waybill"> | string
-    senderPhone?: StringFilter<"Waybill"> | string
-    senderAddress?: StringFilter<"Waybill"> | string
     receiverStore?: StringNullableFilter<"Waybill"> | string | null
-    receiverName?: StringFilter<"Waybill"> | string
-    receiverPhone?: StringFilter<"Waybill"> | string
-    receiverAddress?: StringFilter<"Waybill"> | string
+    receiverName?: StringNullableFilter<"Waybill"> | string | null
+    receiverPhone?: StringNullableFilter<"Waybill"> | string | null
+    receiverAddress?: StringNullableFilter<"Waybill"> | string | null
     skuCode?: StringNullableFilter<"Waybill"> | string | null
     skuName?: StringNullableFilter<"Waybill"> | string | null
+    quantity?: IntNullableFilter<"Waybill"> | number | null
     skuSpec?: StringNullableFilter<"Waybill"> | string | null
-    weight?: FloatFilter<"Waybill"> | number
-    quantity?: IntFilter<"Waybill"> | number
-    tempZone?: StringFilter<"Waybill"> | string
     remark?: StringNullableFilter<"Waybill"> | string | null
     batchId?: StringFilter<"Waybill"> | string
     createdAt?: DateTimeFilter<"Waybill"> | Date | string
@@ -3117,19 +3033,14 @@ export namespace Prisma {
   export type WaybillOrderByWithAggregationInput = {
     id?: SortOrder
     externalCode?: SortOrderInput | SortOrder
-    senderName?: SortOrder
-    senderPhone?: SortOrder
-    senderAddress?: SortOrder
     receiverStore?: SortOrderInput | SortOrder
-    receiverName?: SortOrder
-    receiverPhone?: SortOrder
-    receiverAddress?: SortOrder
+    receiverName?: SortOrderInput | SortOrder
+    receiverPhone?: SortOrderInput | SortOrder
+    receiverAddress?: SortOrderInput | SortOrder
     skuCode?: SortOrderInput | SortOrder
     skuName?: SortOrderInput | SortOrder
+    quantity?: SortOrderInput | SortOrder
     skuSpec?: SortOrderInput | SortOrder
-    weight?: SortOrder
-    quantity?: SortOrder
-    tempZone?: SortOrder
     remark?: SortOrderInput | SortOrder
     batchId?: SortOrder
     createdAt?: SortOrder
@@ -3147,19 +3058,14 @@ export namespace Prisma {
     NOT?: WaybillScalarWhereWithAggregatesInput | WaybillScalarWhereWithAggregatesInput[]
     id?: StringWithAggregatesFilter<"Waybill"> | string
     externalCode?: StringNullableWithAggregatesFilter<"Waybill"> | string | null
-    senderName?: StringWithAggregatesFilter<"Waybill"> | string
-    senderPhone?: StringWithAggregatesFilter<"Waybill"> | string
-    senderAddress?: StringWithAggregatesFilter<"Waybill"> | string
     receiverStore?: StringNullableWithAggregatesFilter<"Waybill"> | string | null
-    receiverName?: StringWithAggregatesFilter<"Waybill"> | string
-    receiverPhone?: StringWithAggregatesFilter<"Waybill"> | string
-    receiverAddress?: StringWithAggregatesFilter<"Waybill"> | string
+    receiverName?: StringNullableWithAggregatesFilter<"Waybill"> | string | null
+    receiverPhone?: StringNullableWithAggregatesFilter<"Waybill"> | string | null
+    receiverAddress?: StringNullableWithAggregatesFilter<"Waybill"> | string | null
     skuCode?: StringNullableWithAggregatesFilter<"Waybill"> | string | null
     skuName?: StringNullableWithAggregatesFilter<"Waybill"> | string | null
+    quantity?: IntNullableWithAggregatesFilter<"Waybill"> | number | null
     skuSpec?: StringNullableWithAggregatesFilter<"Waybill"> | string | null
-    weight?: FloatWithAggregatesFilter<"Waybill"> | number
-    quantity?: IntWithAggregatesFilter<"Waybill"> | number
-    tempZone?: StringWithAggregatesFilter<"Waybill"> | string
     remark?: StringNullableWithAggregatesFilter<"Waybill"> | string | null
     batchId?: StringWithAggregatesFilter<"Waybill"> | string
     createdAt?: DateTimeWithAggregatesFilter<"Waybill"> | Date | string
@@ -3226,19 +3132,14 @@ export namespace Prisma {
   export type WaybillCreateInput = {
     id?: string
     externalCode?: string | null
-    senderName: string
-    senderPhone: string
-    senderAddress: string
     receiverStore?: string | null
-    receiverName: string
-    receiverPhone: string
-    receiverAddress: string
+    receiverName?: string | null
+    receiverPhone?: string | null
+    receiverAddress?: string | null
     skuCode?: string | null
     skuName?: string | null
+    quantity?: number | null
     skuSpec?: string | null
-    weight: number
-    quantity: number
-    tempZone: string
     remark?: string | null
     batchId: string
     createdAt?: Date | string
@@ -3248,19 +3149,14 @@ export namespace Prisma {
   export type WaybillUncheckedCreateInput = {
     id?: string
     externalCode?: string | null
-    senderName: string
-    senderPhone: string
-    senderAddress: string
     receiverStore?: string | null
-    receiverName: string
-    receiverPhone: string
-    receiverAddress: string
+    receiverName?: string | null
+    receiverPhone?: string | null
+    receiverAddress?: string | null
     skuCode?: string | null
     skuName?: string | null
+    quantity?: number | null
     skuSpec?: string | null
-    weight: number
-    quantity: number
-    tempZone: string
     remark?: string | null
     batchId: string
     createdAt?: Date | string
@@ -3270,19 +3166,14 @@ export namespace Prisma {
   export type WaybillUpdateInput = {
     id?: StringFieldUpdateOperationsInput | string
     externalCode?: NullableStringFieldUpdateOperationsInput | string | null
-    senderName?: StringFieldUpdateOperationsInput | string
-    senderPhone?: StringFieldUpdateOperationsInput | string
-    senderAddress?: StringFieldUpdateOperationsInput | string
     receiverStore?: NullableStringFieldUpdateOperationsInput | string | null
-    receiverName?: StringFieldUpdateOperationsInput | string
-    receiverPhone?: StringFieldUpdateOperationsInput | string
-    receiverAddress?: StringFieldUpdateOperationsInput | string
+    receiverName?: NullableStringFieldUpdateOperationsInput | string | null
+    receiverPhone?: NullableStringFieldUpdateOperationsInput | string | null
+    receiverAddress?: NullableStringFieldUpdateOperationsInput | string | null
     skuCode?: NullableStringFieldUpdateOperationsInput | string | null
     skuName?: NullableStringFieldUpdateOperationsInput | string | null
+    quantity?: NullableIntFieldUpdateOperationsInput | number | null
     skuSpec?: NullableStringFieldUpdateOperationsInput | string | null
-    weight?: FloatFieldUpdateOperationsInput | number
-    quantity?: IntFieldUpdateOperationsInput | number
-    tempZone?: StringFieldUpdateOperationsInput | string
     remark?: NullableStringFieldUpdateOperationsInput | string | null
     batchId?: StringFieldUpdateOperationsInput | string
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
@@ -3292,19 +3183,14 @@ export namespace Prisma {
   export type WaybillUncheckedUpdateInput = {
     id?: StringFieldUpdateOperationsInput | string
     externalCode?: NullableStringFieldUpdateOperationsInput | string | null
-    senderName?: StringFieldUpdateOperationsInput | string
-    senderPhone?: StringFieldUpdateOperationsInput | string
-    senderAddress?: StringFieldUpdateOperationsInput | string
     receiverStore?: NullableStringFieldUpdateOperationsInput | string | null
-    receiverName?: StringFieldUpdateOperationsInput | string
-    receiverPhone?: StringFieldUpdateOperationsInput | string
-    receiverAddress?: StringFieldUpdateOperationsInput | string
+    receiverName?: NullableStringFieldUpdateOperationsInput | string | null
+    receiverPhone?: NullableStringFieldUpdateOperationsInput | string | null
+    receiverAddress?: NullableStringFieldUpdateOperationsInput | string | null
     skuCode?: NullableStringFieldUpdateOperationsInput | string | null
     skuName?: NullableStringFieldUpdateOperationsInput | string | null
+    quantity?: NullableIntFieldUpdateOperationsInput | number | null
     skuSpec?: NullableStringFieldUpdateOperationsInput | string | null
-    weight?: FloatFieldUpdateOperationsInput | number
-    quantity?: IntFieldUpdateOperationsInput | number
-    tempZone?: StringFieldUpdateOperationsInput | string
     remark?: NullableStringFieldUpdateOperationsInput | string | null
     batchId?: StringFieldUpdateOperationsInput | string
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
@@ -3314,19 +3200,14 @@ export namespace Prisma {
   export type WaybillCreateManyInput = {
     id?: string
     externalCode?: string | null
-    senderName: string
-    senderPhone: string
-    senderAddress: string
     receiverStore?: string | null
-    receiverName: string
-    receiverPhone: string
-    receiverAddress: string
+    receiverName?: string | null
+    receiverPhone?: string | null
+    receiverAddress?: string | null
     skuCode?: string | null
     skuName?: string | null
+    quantity?: number | null
     skuSpec?: string | null
-    weight: number
-    quantity: number
-    tempZone: string
     remark?: string | null
     batchId: string
     createdAt?: Date | string
@@ -3336,19 +3217,14 @@ export namespace Prisma {
   export type WaybillUpdateManyMutationInput = {
     id?: StringFieldUpdateOperationsInput | string
     externalCode?: NullableStringFieldUpdateOperationsInput | string | null
-    senderName?: StringFieldUpdateOperationsInput | string
-    senderPhone?: StringFieldUpdateOperationsInput | string
-    senderAddress?: StringFieldUpdateOperationsInput | string
     receiverStore?: NullableStringFieldUpdateOperationsInput | string | null
-    receiverName?: StringFieldUpdateOperationsInput | string
-    receiverPhone?: StringFieldUpdateOperationsInput | string
-    receiverAddress?: StringFieldUpdateOperationsInput | string
+    receiverName?: NullableStringFieldUpdateOperationsInput | string | null
+    receiverPhone?: NullableStringFieldUpdateOperationsInput | string | null
+    receiverAddress?: NullableStringFieldUpdateOperationsInput | string | null
     skuCode?: NullableStringFieldUpdateOperationsInput | string | null
     skuName?: NullableStringFieldUpdateOperationsInput | string | null
+    quantity?: NullableIntFieldUpdateOperationsInput | number | null
     skuSpec?: NullableStringFieldUpdateOperationsInput | string | null
-    weight?: FloatFieldUpdateOperationsInput | number
-    quantity?: IntFieldUpdateOperationsInput | number
-    tempZone?: StringFieldUpdateOperationsInput | string
     remark?: NullableStringFieldUpdateOperationsInput | string | null
     batchId?: StringFieldUpdateOperationsInput | string
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
@@ -3358,19 +3234,14 @@ export namespace Prisma {
   export type WaybillUncheckedUpdateManyInput = {
     id?: StringFieldUpdateOperationsInput | string
     externalCode?: NullableStringFieldUpdateOperationsInput | string | null
-    senderName?: StringFieldUpdateOperationsInput | string
-    senderPhone?: StringFieldUpdateOperationsInput | string
-    senderAddress?: StringFieldUpdateOperationsInput | string
     receiverStore?: NullableStringFieldUpdateOperationsInput | string | null
-    receiverName?: StringFieldUpdateOperationsInput | string
-    receiverPhone?: StringFieldUpdateOperationsInput | string
-    receiverAddress?: StringFieldUpdateOperationsInput | string
+    receiverName?: NullableStringFieldUpdateOperationsInput | string | null
+    receiverPhone?: NullableStringFieldUpdateOperationsInput | string | null
+    receiverAddress?: NullableStringFieldUpdateOperationsInput | string | null
     skuCode?: NullableStringFieldUpdateOperationsInput | string | null
     skuName?: NullableStringFieldUpdateOperationsInput | string | null
+    quantity?: NullableIntFieldUpdateOperationsInput | number | null
     skuSpec?: NullableStringFieldUpdateOperationsInput | string | null
-    weight?: FloatFieldUpdateOperationsInput | number
-    quantity?: IntFieldUpdateOperationsInput | number
-    tempZone?: StringFieldUpdateOperationsInput | string
     remark?: NullableStringFieldUpdateOperationsInput | string | null
     batchId?: StringFieldUpdateOperationsInput | string
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
@@ -3470,26 +3341,15 @@ export namespace Prisma {
     not?: NestedStringNullableFilter<$PrismaModel> | string | null
   }
 
-  export type FloatFilter<$PrismaModel = never> = {
-    equals?: number | FloatFieldRefInput<$PrismaModel>
-    in?: number[] | ListFloatFieldRefInput<$PrismaModel>
-    notIn?: number[] | ListFloatFieldRefInput<$PrismaModel>
-    lt?: number | FloatFieldRefInput<$PrismaModel>
-    lte?: number | FloatFieldRefInput<$PrismaModel>
-    gt?: number | FloatFieldRefInput<$PrismaModel>
-    gte?: number | FloatFieldRefInput<$PrismaModel>
-    not?: NestedFloatFilter<$PrismaModel> | number
-  }
-
-  export type IntFilter<$PrismaModel = never> = {
-    equals?: number | IntFieldRefInput<$PrismaModel>
-    in?: number[] | ListIntFieldRefInput<$PrismaModel>
-    notIn?: number[] | ListIntFieldRefInput<$PrismaModel>
+  export type IntNullableFilter<$PrismaModel = never> = {
+    equals?: number | IntFieldRefInput<$PrismaModel> | null
+    in?: number[] | ListIntFieldRefInput<$PrismaModel> | null
+    notIn?: number[] | ListIntFieldRefInput<$PrismaModel> | null
     lt?: number | IntFieldRefInput<$PrismaModel>
     lte?: number | IntFieldRefInput<$PrismaModel>
     gt?: number | IntFieldRefInput<$PrismaModel>
     gte?: number | IntFieldRefInput<$PrismaModel>
-    not?: NestedIntFilter<$PrismaModel> | number
+    not?: NestedIntNullableFilter<$PrismaModel> | number | null
   }
 
   export type DateTimeFilter<$PrismaModel = never> = {
@@ -3511,19 +3371,14 @@ export namespace Prisma {
   export type WaybillCountOrderByAggregateInput = {
     id?: SortOrder
     externalCode?: SortOrder
-    senderName?: SortOrder
-    senderPhone?: SortOrder
-    senderAddress?: SortOrder
     receiverStore?: SortOrder
     receiverName?: SortOrder
     receiverPhone?: SortOrder
     receiverAddress?: SortOrder
     skuCode?: SortOrder
     skuName?: SortOrder
-    skuSpec?: SortOrder
-    weight?: SortOrder
     quantity?: SortOrder
-    tempZone?: SortOrder
+    skuSpec?: SortOrder
     remark?: SortOrder
     batchId?: SortOrder
     createdAt?: SortOrder
@@ -3531,26 +3386,20 @@ export namespace Prisma {
   }
 
   export type WaybillAvgOrderByAggregateInput = {
-    weight?: SortOrder
     quantity?: SortOrder
   }
 
   export type WaybillMaxOrderByAggregateInput = {
     id?: SortOrder
     externalCode?: SortOrder
-    senderName?: SortOrder
-    senderPhone?: SortOrder
-    senderAddress?: SortOrder
     receiverStore?: SortOrder
     receiverName?: SortOrder
     receiverPhone?: SortOrder
     receiverAddress?: SortOrder
     skuCode?: SortOrder
     skuName?: SortOrder
-    skuSpec?: SortOrder
-    weight?: SortOrder
     quantity?: SortOrder
-    tempZone?: SortOrder
+    skuSpec?: SortOrder
     remark?: SortOrder
     batchId?: SortOrder
     createdAt?: SortOrder
@@ -3560,19 +3409,14 @@ export namespace Prisma {
   export type WaybillMinOrderByAggregateInput = {
     id?: SortOrder
     externalCode?: SortOrder
-    senderName?: SortOrder
-    senderPhone?: SortOrder
-    senderAddress?: SortOrder
     receiverStore?: SortOrder
     receiverName?: SortOrder
     receiverPhone?: SortOrder
     receiverAddress?: SortOrder
     skuCode?: SortOrder
     skuName?: SortOrder
-    skuSpec?: SortOrder
-    weight?: SortOrder
     quantity?: SortOrder
-    tempZone?: SortOrder
+    skuSpec?: SortOrder
     remark?: SortOrder
     batchId?: SortOrder
     createdAt?: SortOrder
@@ -3580,7 +3424,6 @@ export namespace Prisma {
   }
 
   export type WaybillSumOrderByAggregateInput = {
-    weight?: SortOrder
     quantity?: SortOrder
   }
 
@@ -3620,36 +3463,20 @@ export namespace Prisma {
     _max?: NestedStringNullableFilter<$PrismaModel>
   }
 
-  export type FloatWithAggregatesFilter<$PrismaModel = never> = {
-    equals?: number | FloatFieldRefInput<$PrismaModel>
-    in?: number[] | ListFloatFieldRefInput<$PrismaModel>
-    notIn?: number[] | ListFloatFieldRefInput<$PrismaModel>
-    lt?: number | FloatFieldRefInput<$PrismaModel>
-    lte?: number | FloatFieldRefInput<$PrismaModel>
-    gt?: number | FloatFieldRefInput<$PrismaModel>
-    gte?: number | FloatFieldRefInput<$PrismaModel>
-    not?: NestedFloatWithAggregatesFilter<$PrismaModel> | number
-    _count?: NestedIntFilter<$PrismaModel>
-    _avg?: NestedFloatFilter<$PrismaModel>
-    _sum?: NestedFloatFilter<$PrismaModel>
-    _min?: NestedFloatFilter<$PrismaModel>
-    _max?: NestedFloatFilter<$PrismaModel>
-  }
-
-  export type IntWithAggregatesFilter<$PrismaModel = never> = {
-    equals?: number | IntFieldRefInput<$PrismaModel>
-    in?: number[] | ListIntFieldRefInput<$PrismaModel>
-    notIn?: number[] | ListIntFieldRefInput<$PrismaModel>
+  export type IntNullableWithAggregatesFilter<$PrismaModel = never> = {
+    equals?: number | IntFieldRefInput<$PrismaModel> | null
+    in?: number[] | ListIntFieldRefInput<$PrismaModel> | null
+    notIn?: number[] | ListIntFieldRefInput<$PrismaModel> | null
     lt?: number | IntFieldRefInput<$PrismaModel>
     lte?: number | IntFieldRefInput<$PrismaModel>
     gt?: number | IntFieldRefInput<$PrismaModel>
     gte?: number | IntFieldRefInput<$PrismaModel>
-    not?: NestedIntWithAggregatesFilter<$PrismaModel> | number
-    _count?: NestedIntFilter<$PrismaModel>
-    _avg?: NestedFloatFilter<$PrismaModel>
-    _sum?: NestedIntFilter<$PrismaModel>
-    _min?: NestedIntFilter<$PrismaModel>
-    _max?: NestedIntFilter<$PrismaModel>
+    not?: NestedIntNullableWithAggregatesFilter<$PrismaModel> | number | null
+    _count?: NestedIntNullableFilter<$PrismaModel>
+    _avg?: NestedFloatNullableFilter<$PrismaModel>
+    _sum?: NestedIntNullableFilter<$PrismaModel>
+    _min?: NestedIntNullableFilter<$PrismaModel>
+    _max?: NestedIntNullableFilter<$PrismaModel>
   }
 
   export type DateTimeWithAggregatesFilter<$PrismaModel = never> = {
@@ -3701,16 +3528,8 @@ export namespace Prisma {
     set?: string | null
   }
 
-  export type FloatFieldUpdateOperationsInput = {
-    set?: number
-    increment?: number
-    decrement?: number
-    multiply?: number
-    divide?: number
-  }
-
-  export type IntFieldUpdateOperationsInput = {
-    set?: number
+  export type NullableIntFieldUpdateOperationsInput = {
+    set?: number | null
     increment?: number
     decrement?: number
     multiply?: number
@@ -3749,26 +3568,15 @@ export namespace Prisma {
     not?: NestedStringNullableFilter<$PrismaModel> | string | null
   }
 
-  export type NestedFloatFilter<$PrismaModel = never> = {
-    equals?: number | FloatFieldRefInput<$PrismaModel>
-    in?: number[] | ListFloatFieldRefInput<$PrismaModel>
-    notIn?: number[] | ListFloatFieldRefInput<$PrismaModel>
-    lt?: number | FloatFieldRefInput<$PrismaModel>
-    lte?: number | FloatFieldRefInput<$PrismaModel>
-    gt?: number | FloatFieldRefInput<$PrismaModel>
-    gte?: number | FloatFieldRefInput<$PrismaModel>
-    not?: NestedFloatFilter<$PrismaModel> | number
-  }
-
-  export type NestedIntFilter<$PrismaModel = never> = {
-    equals?: number | IntFieldRefInput<$PrismaModel>
-    in?: number[] | ListIntFieldRefInput<$PrismaModel>
-    notIn?: number[] | ListIntFieldRefInput<$PrismaModel>
+  export type NestedIntNullableFilter<$PrismaModel = never> = {
+    equals?: number | IntFieldRefInput<$PrismaModel> | null
+    in?: number[] | ListIntFieldRefInput<$PrismaModel> | null
+    notIn?: number[] | ListIntFieldRefInput<$PrismaModel> | null
     lt?: number | IntFieldRefInput<$PrismaModel>
     lte?: number | IntFieldRefInput<$PrismaModel>
     gt?: number | IntFieldRefInput<$PrismaModel>
     gte?: number | IntFieldRefInput<$PrismaModel>
-    not?: NestedIntFilter<$PrismaModel> | number
+    not?: NestedIntNullableFilter<$PrismaModel> | number | null
   }
 
   export type NestedDateTimeFilter<$PrismaModel = never> = {
@@ -3799,6 +3607,17 @@ export namespace Prisma {
     _max?: NestedStringFilter<$PrismaModel>
   }
 
+  export type NestedIntFilter<$PrismaModel = never> = {
+    equals?: number | IntFieldRefInput<$PrismaModel>
+    in?: number[] | ListIntFieldRefInput<$PrismaModel>
+    notIn?: number[] | ListIntFieldRefInput<$PrismaModel>
+    lt?: number | IntFieldRefInput<$PrismaModel>
+    lte?: number | IntFieldRefInput<$PrismaModel>
+    gt?: number | IntFieldRefInput<$PrismaModel>
+    gte?: number | IntFieldRefInput<$PrismaModel>
+    not?: NestedIntFilter<$PrismaModel> | number
+  }
+
   export type NestedStringNullableWithAggregatesFilter<$PrismaModel = never> = {
     equals?: string | StringFieldRefInput<$PrismaModel> | null
     in?: string[] | ListStringFieldRefInput<$PrismaModel> | null
@@ -3816,7 +3635,7 @@ export namespace Prisma {
     _max?: NestedStringNullableFilter<$PrismaModel>
   }
 
-  export type NestedIntNullableFilter<$PrismaModel = never> = {
+  export type NestedIntNullableWithAggregatesFilter<$PrismaModel = never> = {
     equals?: number | IntFieldRefInput<$PrismaModel> | null
     in?: number[] | ListIntFieldRefInput<$PrismaModel> | null
     notIn?: number[] | ListIntFieldRefInput<$PrismaModel> | null
@@ -3824,39 +3643,23 @@ export namespace Prisma {
     lte?: number | IntFieldRefInput<$PrismaModel>
     gt?: number | IntFieldRefInput<$PrismaModel>
     gte?: number | IntFieldRefInput<$PrismaModel>
-    not?: NestedIntNullableFilter<$PrismaModel> | number | null
+    not?: NestedIntNullableWithAggregatesFilter<$PrismaModel> | number | null
+    _count?: NestedIntNullableFilter<$PrismaModel>
+    _avg?: NestedFloatNullableFilter<$PrismaModel>
+    _sum?: NestedIntNullableFilter<$PrismaModel>
+    _min?: NestedIntNullableFilter<$PrismaModel>
+    _max?: NestedIntNullableFilter<$PrismaModel>
   }
 
-  export type NestedFloatWithAggregatesFilter<$PrismaModel = never> = {
-    equals?: number | FloatFieldRefInput<$PrismaModel>
-    in?: number[] | ListFloatFieldRefInput<$PrismaModel>
-    notIn?: number[] | ListFloatFieldRefInput<$PrismaModel>
+  export type NestedFloatNullableFilter<$PrismaModel = never> = {
+    equals?: number | FloatFieldRefInput<$PrismaModel> | null
+    in?: number[] | ListFloatFieldRefInput<$PrismaModel> | null
+    notIn?: number[] | ListFloatFieldRefInput<$PrismaModel> | null
     lt?: number | FloatFieldRefInput<$PrismaModel>
     lte?: number | FloatFieldRefInput<$PrismaModel>
     gt?: number | FloatFieldRefInput<$PrismaModel>
     gte?: number | FloatFieldRefInput<$PrismaModel>
-    not?: NestedFloatWithAggregatesFilter<$PrismaModel> | number
-    _count?: NestedIntFilter<$PrismaModel>
-    _avg?: NestedFloatFilter<$PrismaModel>
-    _sum?: NestedFloatFilter<$PrismaModel>
-    _min?: NestedFloatFilter<$PrismaModel>
-    _max?: NestedFloatFilter<$PrismaModel>
-  }
-
-  export type NestedIntWithAggregatesFilter<$PrismaModel = never> = {
-    equals?: number | IntFieldRefInput<$PrismaModel>
-    in?: number[] | ListIntFieldRefInput<$PrismaModel>
-    notIn?: number[] | ListIntFieldRefInput<$PrismaModel>
-    lt?: number | IntFieldRefInput<$PrismaModel>
-    lte?: number | IntFieldRefInput<$PrismaModel>
-    gt?: number | IntFieldRefInput<$PrismaModel>
-    gte?: number | IntFieldRefInput<$PrismaModel>
-    not?: NestedIntWithAggregatesFilter<$PrismaModel> | number
-    _count?: NestedIntFilter<$PrismaModel>
-    _avg?: NestedFloatFilter<$PrismaModel>
-    _sum?: NestedIntFilter<$PrismaModel>
-    _min?: NestedIntFilter<$PrismaModel>
-    _max?: NestedIntFilter<$PrismaModel>
+    not?: NestedFloatNullableFilter<$PrismaModel> | number | null
   }
 
   export type NestedDateTimeWithAggregatesFilter<$PrismaModel = never> = {

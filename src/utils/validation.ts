@@ -69,19 +69,6 @@ function validateRow(row: any, rowNum: number, reverseMapping: Record<string, st
   
   // 手机号: 1开头11位 | 座机: 区号-号码
   const phoneRegex = /^1[3-9]\d{9}$|^0\d{2,3}-?\d{7,8}$/;
-  
-  // 发件人电话格式校验
-  if (row.senderPhone) {
-    const senderPhoneStr = String(row.senderPhone).replace(/\s+/g, '');
-    if (!phoneRegex.test(senderPhoneStr)) {
-      errors.push({
-        row: rowNum,
-        field: "senderPhone",
-        fieldLabel: reverseMapping.senderPhone || "发件人电话",
-        message: "手机号需1开头11位，或座机格式如010-12345678",
-      });
-    }
-  }
 
   // 收件人电话格式校验 (只在填写了收件人电话时校验)
   if (row.receiverPhone) {
@@ -92,19 +79,6 @@ function validateRow(row: any, rowNum: number, reverseMapping: Record<string, st
         field: "receiverPhone",
         fieldLabel: reverseMapping.receiverPhone || "收件人电话",
         message: "手机号需1开头11位，或座机格式如010-12345678",
-      });
-    }
-  }
-
-  // 重量 (>0)
-  if (row.weight !== undefined && row.weight !== null && row.weight !== "") {
-    const weight = Number(row.weight);
-    if (isNaN(weight) || weight <= 0) {
-      errors.push({
-        row: rowNum,
-        field: "weight",
-        fieldLabel: reverseMapping.weight || "重量",
-        message: "必须为正数",
       });
     }
   }
@@ -120,17 +94,6 @@ function validateRow(row: any, rowNum: number, reverseMapping: Record<string, st
         message: "必须为正数",
       });
     }
-  }
-
-  // 温层
-  const validTempZones = ["常温", "冷藏", "冷冻"];
-  if (row.tempZone && !validTempZones.includes(String(row.tempZone).trim())) {
-    errors.push({
-      row: rowNum,
-      field: "tempZone",
-      fieldLabel: reverseMapping.tempZone || "温层",
-      message: "不在可选范围内(常温/冷藏/冷冻)",
-    });
   }
 
   return errors;

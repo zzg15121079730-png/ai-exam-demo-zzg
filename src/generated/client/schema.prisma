@@ -11,15 +11,14 @@ datasource db {
 model Waybill {
   id              String   @id @default(uuid())
   externalCode    String?  @map("external_code")
-  senderName      String   @map("sender_name")
-  senderPhone     String   @map("sender_phone")
-  senderAddress   String   @map("sender_address")
-  receiverName    String   @map("receiver_name")
-  receiverPhone   String   @map("receiver_phone")
-  receiverAddress String   @map("receiver_address")
-  weight          Float
-  quantity        Int
-  tempZone        String   @map("temp_zone")
+  receiverStore   String?  @map("receiver_store")
+  receiverName    String?  @map("receiver_name")
+  receiverPhone   String?  @map("receiver_phone")
+  receiverAddress String?  @map("receiver_address")
+  skuCode         String?  @map("sku_code")
+  skuName         String?  @map("sku_name")
+  quantity        Int?
+  skuSpec         String?  @map("sku_spec")
   remark          String?
   batchId         String   @map("batch_id")
   createdAt       DateTime @default(now()) @map("created_at")
@@ -31,7 +30,7 @@ model Waybill {
 model MappingRule {
   id           String   @id @default(uuid())
   fingerprint  String   @unique
-  mappings     String // JSON string of column mappings
+  mappings     String // JSON string of RuleConfig
   templateName String?  @map("template_name")
   createdAt    DateTime @default(now()) @map("created_at")
   updatedAt    DateTime @updatedAt @map("updated_at")

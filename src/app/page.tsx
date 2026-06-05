@@ -17,7 +17,7 @@ import { UploadZone } from "@/components/UploadZone";
 import { DataGrid } from "@/components/DataGrid";
 import { MappingModal } from "@/components/MappingModal";
 import { RuleConfig, RuleEngine } from "@/utils/ruleEngine";
-import { standardFields } from "@/utils/excel";
+import { standardFields, guessMapping } from "@/utils/excel";
 import { validateData, validateStandardData, ValidationError } from "@/utils/validation";
 import * as XLSX from "xlsx";
 
@@ -41,9 +41,9 @@ export default function Home() {
 
   // AI 配置相关
   const [aiConfig, setAiConfig] = useState({
-    apiKey: "sk-KWEokQJRaKCjsBEWGf2XdHDlDY6oGQiczo23Gue4fa5P7ofR",
-    apiBaseUrl: "https://www.vbcode.io/v1",
-    modelName: "gpt-5.4"
+    apiKey: "",
+    apiBaseUrl: "https://api.deepseek.com/v1",
+    modelName: "deepseek-chat"
   });
 
   // 数据相关
@@ -66,13 +66,10 @@ export default function Home() {
     const savedApiKey = localStorage.getItem("ai_api_key");
     const savedBaseUrl = localStorage.getItem("ai_base_url");
     const savedModel = localStorage.getItem("ai_model_name");
-    // 自动迁移旧默认值到新值（DeepSeek 官方）
-    const OLD_DEFAULTS_MODEL = ["GPT5.4", "gpt-5.4"];
-    const OLD_DEFAULTS_URL = ["https://api.vbcode.io/v1", "https://www.vbcode.io/v1"];
-    const OLD_DEFAULTS_KEY = ["sk-KWEokQJRaKCjsBEWGf2XdHDlDY6oGQiczo23Gue4fa5P7ofR"];
-    const finalModel = (!savedModel || OLD_DEFAULTS_MODEL.includes(savedModel)) ? "deepseek-chat" : savedModel;
-    const finalUrl = (!savedBaseUrl || OLD_DEFAULTS_URL.includes(savedBaseUrl)) ? "https://api.deepseek.com/v1" : savedBaseUrl;
-    const finalKey = (!savedApiKey || OLD_DEFAULTS_KEY.includes(savedApiKey)) ? "sk-5263a0e1766745abb0ce5e71adc0091e" : savedApiKey;
+    // 从 localStorage 恢复配置（API Key 主要由后端 env 提供，前端可选覆盖）
+    const finalModel = savedModel || "deepseek-chat";
+    const finalUrl = savedBaseUrl || "https://api.deepseek.com/v1";
+    const finalKey = savedApiKey || "";
     setAiConfig({
       apiKey: finalKey,
       apiBaseUrl: finalUrl,
@@ -258,10 +255,78 @@ export default function Home() {
           try {
             const data = e.target?.result;
             const workbook = XLSX.read(data, { type: "binary" });
-            const parsedRows = RuleEngine.parseExcel(workbook, rule);
+            let parsedRows = RuleEngine.parseExcel(workbook, rule);
+            
+            // 如果 AI 规则未解析出数据，自动降级到 guessMapping 标准匹配
+            if (parsedRows.length === 0) {
+              console.warn("AI 规则未解析出数据，自动降级到标准表头匹配模式");
+              const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+              const aoaData: any[][] = XLSX.utils.sheet_to_json(firstSheet, { header: 1, defval: "" });
+              
+              // 智能找表头行
+              let bestHdrIdx = 0;
+              let bestCount = 0;
+              for (let r = 0; r < Math.min(10, aoaData.length); r++) {
+                const row = aoaData[r] || [];
+                const cnt = row.filter((c: any) => {
+                  const s = String(c).trim();
+                  return s && standardFields.some(f => f.aliases.some(a => s.includes(a)));
+                }).length;
+                if (cnt > bestCount) { bestCount = cnt; bestHdrIdx = r; }
+              }
+              
+              const hdrs = (aoaData[bestHdrIdx] || []).map((h: any) => String(h || '').trim());
+              const autoMapping = guessMapping(hdrs);
+              
+              // 用标准映射解析所有 sheet
+              workbook.SheetNames.forEach(sName => {
+                const ws = workbook.Sheets[sName];
+                const sAoa: any[][] = XLSX.utils.sheet_to_json(ws, { header: 1, defval: "" });
+                
+                // 重新找该 sheet 的表头
+                let sheetHdrIdx = 0;
+                let sheetBestCount = 0;
+                for (let r = 0; r < Math.min(10, sAoa.length); r++) {
+                  const row = sAoa[r] || [];
+                  const cnt = row.filter((c: any) => {
+                    const s = String(c).trim();
+                    return s && standardFields.some(f => f.aliases.some(a => s.includes(a)));
+                  }).length;
+                  if (cnt > sheetBestCount) { sheetBestCount = cnt; sheetHdrIdx = r; }
+                }
+                
+                const sheetHdrs = (sAoa[sheetHdrIdx] || []).map((h: any) => String(h || '').trim());
+                const sheetMapping = guessMapping(sheetHdrs);
+                
+                for (let i = sheetHdrIdx + 1; i < sAoa.length; i++) {
+                  const rowData = sAoa[i];
+                  if (!rowData || rowData.every((c: any) => c === "")) continue;
+                  if (rowData.some((c: any) => String(c).includes("合计") || String(c).includes("总计"))) continue;
+                  
+                  const item: Record<string, any> = {};
+                  Object.entries(sheetMapping).forEach(([header, fieldKey]) => {
+                    if (fieldKey) {
+                      const ci = sheetHdrs.indexOf(header);
+                      if (ci !== -1 && ci < rowData.length) {
+                        item[fieldKey] = String(rowData[ci] || '').trim();
+                      }
+                    }
+                  });
+                  
+                  // 过滤掉完全空的行
+                  if (Object.values(item).some(v => v !== "")) {
+                    parsedRows.push(item);
+                  }
+                }
+              });
+              
+              if (parsedRows.length > 0) {
+                message.info(`AI 规则模式未匹配，已自动切换到标准表头匹配模式，成功解析 ${parsedRows.length} 条`);
+              }
+            }
             
             if (parsedRows.length === 0) {
-              message.error("未能根据该规则解析出任何有效记录，请检查规则配置");
+              message.error("未能解析出任何有效记录，请检查文件格式");
               setStep("idle");
               return;
             }
@@ -298,6 +363,9 @@ export default function Home() {
         const formData = new FormData();
         formData.append("file", file);
         formData.append("rule", JSON.stringify(rule));
+        formData.append("apiKey", aiConfig.apiKey);
+        formData.append("apiBaseUrl", aiConfig.apiBaseUrl);
+        formData.append("modelName", aiConfig.modelName);
 
         const res = await fetch("/api/mapping/parse-file", {
           method: "POST",
@@ -371,14 +439,14 @@ export default function Home() {
   };
 
   // ========= 模态框规则确认并保存 =========
-  const handleRuleModalConfirm = async (confirmedRule: RuleConfig) => {
+  const handleRuleModalConfirm = async (confirmedRule: RuleConfig, parsedData?: any[]) => {
     setRuleModalOpen(false);
     setStep("parsing");
-    setProgress({ percent: 10, current: 0, total: 100, label: "正在保存解析规则到数据库..." });
+    setProgress({ percent: 30, current: 0, total: 100, label: "正在保存规则..." });
 
     try {
-      // 1. 保存规则到数据库
-      const saveRes = await fetch("/api/mapping", {
+      // 后台保存规则（不阻塞主流程）
+      fetch("/api/mapping", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -386,26 +454,30 @@ export default function Home() {
           mappings: confirmedRule,
           templateName: confirmedRule.templateName
         })
-      });
+      }).then(async (saveRes) => {
+        if (saveRes.ok) {
+          const saved = await saveRes.json();
+          fetchRules();
+          if (saved.rule?.id) setSelectedRuleId(saved.rule.id);
+        }
+      }).catch(() => {});
 
-      if (!saveRes.ok) {
-        const err = await saveRes.json();
-        throw new Error(err.error || "解析规则保存数据库失败");
-      }
-
-      const savedRule = await saveRes.json();
-      message.success(`规则 “${confirmedRule.templateName}” 已成功保存到数据库！`);
-      
-      // 刷新列表并选中这条新规则
-      await fetchRules();
-      setSelectedRuleId(savedRule.rule.id);
-
-      // 2. 运行此规则进行完整文件解析
-      if (currentFile) {
+      // 直接使用 MappingModal 中用户已编辑确认的数据
+      if (parsedData && parsedData.length > 0) {
+        setProgress({ percent: 60, current: 0, total: parsedData.length, label: "正在校验数据..." });
+        const { validData: vData, errors: eData } = validateStandardData(parsedData);
+        setValidData(vData);
+        setErrors(eData);
+        setStep("preview");
+        message.success(`共 ${vData.length} 条数据已就绪`);
+        checkDuplicatesAsync(vData);
+      } else if (currentFile) {
         await executeParse(currentFile, confirmedRule);
+      } else {
+        setStep("idle");
       }
     } catch (e: any) {
-      message.error("保存规则并执行解析失败: " + e.message);
+      message.error("处理失败: " + e.message);
       setStep("idle");
     }
   };

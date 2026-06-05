@@ -50,39 +50,25 @@ export async function POST(request: Request) {
       }, { status: 400 });
     }
 
-    // 映射并规范化运单数据
+    // 映射并规范化运单数据 — 只保留考试要求的 10 个字段
     const waybills = filteredData.map(item => ({
-      id: item.id || `mem-wb-${uuidv4()}`,
       externalCode: item.externalCode ? String(item.externalCode) : null,
-      senderName: String(item.senderName || ""),
-      senderPhone: String(item.senderPhone || ""),
-      senderAddress: String(item.senderAddress || ""),
       receiverStore: item.receiverStore ? String(item.receiverStore) : null,
-      receiverName: String(item.receiverName || ""),
-      receiverPhone: String(item.receiverPhone || ""),
-      receiverAddress: String(item.receiverAddress || ""),
+      receiverName: item.receiverName ? String(item.receiverName) : null,
+      receiverPhone: item.receiverPhone ? String(item.receiverPhone) : null,
+      receiverAddress: item.receiverAddress ? String(item.receiverAddress) : null,
       skuCode: item.skuCode ? String(item.skuCode) : null,
       skuName: item.skuName ? String(item.skuName) : null,
-      skuSpec: item.skuSpec ? String(item.skuSpec) : null,
-      weight: Number(item.weight) || 0,
       quantity: Math.round(Number(item.quantity) || 0),
-      tempZone: String(item.tempZone || "常温"),
+      skuSpec: item.skuSpec ? String(item.skuSpec) : null,
       remark: item.remark ? String(item.remark) : null,
       batchId,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString()
     }));
 
-    // 尝试写入数据库
+    // 写入数据库
     try {
-      // 1. 尝试包含 receiverStore 字段的直接写入
-      const insertData = waybills.map(({ id, ...rest }) => rest);
-      const result = await prisma.waybill.createMany({
-        data: insertData,
-      });
-
-      // 同步缓存到内存
-      memoryWaybills = [...waybills, ...memoryWaybills];
+      const result = await prisma.waybill.createMany({ data: waybills });
+      memoryWaybills = [...waybills.map((w, i) => ({ ...w, id: `wb-${batchId}-${i}`, createdAt: new Date().toISOString() })), ...memoryWaybills];
 
       return NextResponse.json({
         success: true,
@@ -91,43 +77,16 @@ export async function POST(request: Request) {
         skippedDuplicates: duplicatesInDb.length,
       });
     } catch (dbErr) {
-      console.warn("Direct db insert failed, trying compatible insert without receiverStore column...", dbErr);
-      
-      try {
-        // 2. 方案B：若数据库无 receiverStore 字段，则兼容性拼接后删除该属性写入
-        const compatibleInsertData = waybills.map(({ id, receiverStore, ...rest }) => {
-          return {
-            ...rest,
-            receiverName: rest.receiverName || receiverStore || "门店收货",
-            remark: receiverStore ? `[收货门店: ${receiverStore}] ${rest.remark || ""}` : rest.remark
-          };
-        });
-
-        const result = await prisma.waybill.createMany({
-          data: compatibleInsertData,
-        });
-
-        // 内存中仍保留高保真的 receiverStore 字段，以供前端刷新直接显示
-        memoryWaybills = [...waybills, ...memoryWaybills];
-
-        return NextResponse.json({
-          success: true,
-          count: result.count,
-          batchId,
-          skippedDuplicates: duplicatesInDb.length,
-        });
-      } catch (finalDbErr) {
-        console.error("Compatible database insert failed. Fallback to memory-only storage:", finalDbErr);
-        // 3. 方案C：若数据库连不上，则完全内存式保存，不报错阻塞
-        memoryWaybills = [...waybills, ...memoryWaybills];
-        return NextResponse.json({
-          success: true,
-          count: waybills.length,
-          batchId,
-          skippedDuplicates: duplicatesInDb.length,
-          isFallback: true
-        });
-      }
+      console.error("Database insert failed, fallback to memory:", dbErr);
+      const memItems = waybills.map((w, i) => ({ ...w, id: `mem-${batchId}-${i}`, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() }));
+      memoryWaybills = [...memItems, ...memoryWaybills];
+      return NextResponse.json({
+        success: true,
+        count: waybills.length,
+        batchId,
+        skippedDuplicates: duplicatesInDb.length,
+        isFallback: true
+      });
     }
   } catch (error: any) {
     console.error("Error saving waybills:", error);
@@ -173,22 +132,9 @@ export async function GET(request: Request) {
         }),
       ]);
 
-      // 对从数据库查出的字段进行向下兼容还原（如果在备注里有拼接门店）
-      const itemsWithStore = items.map((w: any) => {
-        const completed = { ...w };
-        if (!completed.receiverStore && completed.remark?.startsWith("[收货门店: ")) {
-          const match = completed.remark.match(/^\[收货门店: (.*?)\]/);
-          if (match) {
-            completed.receiverStore = match[1];
-            completed.remark = completed.remark.replace(/^\[收货门店: (.*?)\]\s*/, "");
-          }
-        }
-        return completed;
-      });
-
       return NextResponse.json({
         total,
-        items: itemsWithStore,
+        items,
         page,
         pageSize,
         totalPages: Math.ceil(total / pageSize),

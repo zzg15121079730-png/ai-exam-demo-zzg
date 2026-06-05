@@ -1,104 +1,185 @@
 import * as XLSX from "xlsx";
+import { standardFields } from "./excel";
 
 export interface FieldMapping {
-  field: string;        // 标准字段 (如 externalCode, receiverName, skuCode, skuName, quantity, tempZone 等)
-  column?: string;       // 映射的列头名称
-  columnIndex?: number;  // 映射的列索引 (0-based)
-  defaultValue?: string; // 默认值/静态值
-  isGuess?: boolean;     // 是否是 AI 猜测的
+  field: string;
+  column?: string;
+  columnIndex?: number;
+  defaultValue?: string;
+  isGuess?: boolean;
 }
 
 export interface RuleConfig {
   id?: string;
   templateName?: string;
   fileType: "excel" | "pdf" | "word";
-  
-  // Excel 专属规则
   excel?: {
-    sheets?: string[];      // 哪些 sheet 需要解析，如 ["Sheet1"] 或 ["*"] 表示所有
-    headerRow?: number;     // 表头所在行（从1开始，如果无表头为0）
-    dataStartRow?: number;  // 数据开始行（从1开始）
-    dataEndRowOffset?: number; // 底部跳过几行
-    skipRowsWith?: string[]; // 跳过包含这些字符的行，如 ["合计", "总计"]
-    
-    // 尾部/头部元数据提取
+    sheets?: string[];
+    headerRow?: number;
+    dataStartRow?: number;
+    dataEndRowOffset?: number;
+    skipRowsWith?: string[];
     footerExtraction?: {
       enabled: boolean;
       fields: {
-        field: string;      // 目标字段名
+        field: string;
         type: "cell" | "keyword-offset";
-        cell?: { row: number; col: number }; // 绝对位置（从1开始，负数表示从末尾倒数，如 row: -1 表示倒数第一行）
-        keyword?: string;   // 查找的关键字，如 "收货门店："
-        offset?: { row: number; col: number }; // 关键字单元格的相对偏移（如 row: 0, col: 1 表示同行右侧一格）
+        cell?: { row: number; col: number };
+        keyword?: string;
+        offset?: { row: number; col: number };
       }[];
     };
-    
-    // 跨行聚合 (同一单号多行合并)
     rowAggregation?: {
       enabled: boolean;
-      groupByField: string; // 根据什么字段分组合并，如 "externalCode"
+      groupByField: string;
     };
-
-    // 矩阵转置 (SKU x 门店展开)
     matrixPivot?: {
       enabled: boolean;
-      pivotHeaderRow: number;    // 列头维度所在的行，如第2行
-      pivotColumnsStart: number; // 矩阵列从第几列开始（从1开始）
-      skuFields: { field: string; column: string }[]; // 左侧 SKU 字段及其列名
-      targetField: string;       // 列名填充到哪个字段（如 receiverName）
-      valueField: string;        // 单元格的值填充到哪个字段（如 quantity）
+      pivotHeaderRow: number;
+      pivotColumnsStart: number;
+      skuFields: { field: string; column: string }[];
+      targetField: string;
+      valueField: string;
     };
-
-    // 复合单元格拆分 (如一个单元格内含 "苹果x5\n香蕉x10")
     compositeSplit?: {
       enabled: boolean;
-      field: string;          // 目标拆分字段
-      splitPattern: string;   // 拆分正则，如 "\\n"
-      regexExtract: string;   // 提取 SKU 字段和数量的正则，如 "(.+?)x(\\d+)"
-      skuNameGroup: number;   // SKU名称捕获组索引
-      qtyGroup: number;       // 数量捕获组索引
+      field: string;
+      splitPattern: string;
+      regexExtract: string;
+      skuNameGroup: number;
+      qtyGroup: number;
     };
-
-    // 卡片式堆叠 (每条记录是一个独立的卡片区域)
     cardLayout?: {
       enabled: boolean;
-      cardStartRegex: string; // 标志卡片开始的正则，如 "▶ 调拨记录"
-      fields: {
-        field: string;
-        relativeCell: { row: number; col: number }; // 相对于卡片起始行的偏移 (1-based)
-      }[];
-      tableStartRowOffset: number; // 表格相对于卡片起始行的偏移
-      tableEndRegex?: string;      // 表格结束的文本标志
+      cardStartRegex: string;
+      fields: { field: string; relativeCell: { row: number; col: number } }[];
+      tableStartRowOffset: number;
+      tableEndRegex?: string;
     };
   };
-
-  // PDF & Word 专属规则 (纯文本解析)
   text?: {
-    splitPattern?: string; // 运单拆分标志，例如 "━━━" 或者是 "--- PAGE_BREAK ---"
-    fields: {
-      field: string;
-      regexPattern: string; // 提取字段的正则表达式，如 "电话：\\s*(\\d{11})"
-    }[];
-    tableRowRegex?: string; // 提取明细表的行正则，如 "(\\w+)\\s*\\|\\s*(.+?)\\s*\\|\\s*(\\d+)"
-    tableFields?: string[];  // 明细行对应的属性列表，如 ["skuCode", "skuName", "quantity"]
+    splitPattern?: string;
+    fields: { field: string; regexPattern: string }[];
+    tableRowRegex?: string;
+    tableFields?: string[];
   };
-
-  // 映射关系
   mappings: FieldMapping[];
 }
 
 /**
- * 规则执行引擎
+ * 根据 standardFields 别名自动建立表头→字段的映射
+ * 这是最核心的改进：不再依赖 AI 规则中 mapping 的 column 名必须精确匹配
  */
+function buildAutoMapping(headers: string[]): Record<number, string> {
+  const mapping: Record<number, string> = {};
+  const usedFields = new Set<string>();
+  const usedCols = new Set<number>();
+  
+  // 第一轮：精确相等匹配（优先级最高）
+  headers.forEach((header, colIdx) => {
+    if (!header) return;
+    const h = header.trim();
+    if (!h || h.length < 2) return;
+    
+    for (const sf of standardFields) {
+      if (usedFields.has(sf.key)) continue;
+      if (sf.aliases.some(alias => h === alias)) {
+        mapping[colIdx] = sf.key;
+        usedFields.add(sf.key);
+        usedCols.add(colIdx);
+        break;
+      }
+    }
+  });
+  
+  // 第二轮：包含匹配（填充未匹配的字段）
+  headers.forEach((header, colIdx) => {
+    if (usedCols.has(colIdx)) return;
+    if (!header) return;
+    const h = header.trim();
+    if (!h || h.length < 2) return;
+    
+    for (const sf of standardFields) {
+      if (usedFields.has(sf.key)) continue;
+      // 表头包含别名（如"发货数量*"包含"发货数量"）
+      if (sf.aliases.some(alias => h.includes(alias) && alias.length >= 2)) {
+        mapping[colIdx] = sf.key;
+        usedFields.add(sf.key);
+        usedCols.add(colIdx);
+        break;
+      }
+    }
+  });
+  
+  return mapping;
+}
+
+/**
+ * 从尾部行中扫描提取收货人信息（通用关键字扫描）
+ */
+function extractFooterInfo(aoa: any[][], startRow: number): Record<string, string> {
+  const meta: Record<string, string> = {};
+  
+  for (let r = startRow; r < aoa.length; r++) {
+    const row = aoa[r] || [];
+    for (let c = 0; c < row.length; c++) {
+      const cellStr = String(row[c] || '').trim();
+      if (!cellStr) continue;
+      
+      // 检测 "关键字：值" 在同一个格子里
+      const kvMatch = cellStr.match(/^(联系人|收货人|收件人|联系电话|收货电话|收件电话|收货地址|收件地址|配送地址|收货门店|目标门店)[：:]\s*(.+)/);
+      if (kvMatch) {
+        const key = kvMatch[1];
+        const val = kvMatch[2].trim();
+        if (/联系人|收货人|收件人/.test(key) && !meta.receiverName) meta.receiverName = val;
+        else if (/电话/.test(key) && !meta.receiverPhone) meta.receiverPhone = val;
+        else if (/地址/.test(key) && !meta.receiverAddress) meta.receiverAddress = val;
+        else if (/门店/.test(key) && !meta.receiverStore) meta.receiverStore = val;
+        continue;
+      }
+      
+      // 检测 "关键字：" 在一个格子，值在下一个格子
+      const labelMatch = cellStr.match(/^(联系人|收货人|收件人|联系电话|收货电话|收件电话|收货地址|收件地址|配送地址|收货门店|目标门店)[：:]?\s*$/);
+      if (labelMatch && c + 1 < row.length) {
+        const nextVal = String(row[c + 1] || '').trim();
+        if (nextVal) {
+          const key = labelMatch[1];
+          if (/联系人|收货人|收件人/.test(key) && !meta.receiverName) meta.receiverName = nextVal;
+          else if (/电话/.test(key) && !meta.receiverPhone) meta.receiverPhone = nextVal;
+          else if (/地址/.test(key) && !meta.receiverAddress) meta.receiverAddress = nextVal;
+          else if (/门店/.test(key) && !meta.receiverStore) meta.receiverStore = nextVal;
+        }
+      }
+    }
+  }
+  
+  return meta;
+}
+
+/**
+ * 从标题行中提取门店名称
+ * 如 "尹三顺自助烤肉（银泰店）出库单" → "尹三顺自助烤肉（银泰店）"
+ */
+function extractStoreFromTitle(aoa: any[][], headerRowIdx: number): string {
+  for (let r = 0; r < headerRowIdx; r++) {
+    const row = aoa[r] || [];
+    const firstCell = String(row[0] || '').trim();
+    if (!firstCell) continue;
+    // 如果标题包含"出库单"/"发货单"/"配送单"等，提取门店名
+    const match = firstCell.match(/^(.+?)(?:出库单|发货单|配送单|调拨单)/);
+    if (match) return match[1].trim();
+  }
+  return "";
+}
+
 export class RuleEngine {
   /**
-   * 执行 Excel 规则解析
+   * 执行 Excel 规则解析 — 核心改进：自动别名匹配 + 多Sheet门店提取 + 健壮尾部扫描
    */
   static parseExcel(workbook: XLSX.WorkBook, rule: RuleConfig): any[] {
     const results: any[] = [];
     const sheetNames = workbook.SheetNames;
     
-    // 确定要解析的 sheets
     let sheetsToParse = sheetNames;
     if (rule.excel?.sheets && rule.excel.sheets.length > 0 && !rule.excel.sheets.includes("*")) {
       sheetsToParse = sheetNames.filter(name => rule.excel?.sheets?.includes(name));
@@ -106,122 +187,103 @@ export class RuleEngine {
 
     sheetsToParse.forEach(sheetName => {
       const sheet = workbook.Sheets[sheetName];
-      // 转换为二维数组 AoA，方便灵活定位
       const aoa: any[][] = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: "" });
       if (aoa.length === 0) return;
 
       const excelRule = rule.excel;
 
-      // 1. 是否是卡片式布局
+      // ===================== 卡片式布局 =====================
       if (excelRule?.cardLayout?.enabled) {
         const cardRules = excelRule.cardLayout;
         const startRegex = new RegExp(cardRules.cardStartRegex);
         
-        // 查找所有卡片的起始行索引
         const cardIndices: number[] = [];
         aoa.forEach((row, idx) => {
-          const firstCellStr = String(row[0] || '');
-          if (startRegex.test(firstCellStr)) {
-            cardIndices.push(idx);
-          }
+          if (startRegex.test(String(row[0] || ''))) cardIndices.push(idx);
         });
 
         cardIndices.forEach((startIdx, listIdx) => {
           const endIdx = listIdx < cardIndices.length - 1 ? cardIndices[listIdx + 1] : aoa.length;
           
-          // 提取卡片级全局字段
+          // 提取卡片级字段（收货人等）
           const cardMeta: Record<string, any> = {};
           cardRules.fields.forEach(f => {
-            const relRow = f.relativeCell.row - 1; // 转为 0-based
+            const relRow = f.relativeCell.row - 1;
             const relCol = f.relativeCell.col - 1;
-            const targetRowIdx = startIdx + relRow;
-            if (targetRowIdx < aoa.length && relCol < aoa[targetRowIdx].length) {
-              cardMeta[f.field] = String(aoa[targetRowIdx][relCol] || '').trim();
+            const tr = startIdx + relRow;
+            if (tr < aoa.length && relCol < (aoa[tr]?.length || 0)) {
+              cardMeta[f.field] = String(aoa[tr][relCol] || '').trim();
             }
           });
 
-          // 解析卡片内的明细表
-          const tableStartIdx = startIdx + cardRules.tableStartRowOffset - 1;
+          // 如果卡片字段里没有提取到收货信息，尝试通用扫描
+          if (!cardMeta.receiverStore && !cardMeta.receiverName) {
+            const footerMeta = extractFooterInfo(aoa.slice(startIdx, endIdx), 0);
+            Object.assign(cardMeta, footerMeta);
+          }
+
+          // 解析卡片内小表
+          const tableStartIdx = startIdx + (cardRules.tableStartRowOffset || 3);
+          const tableHeaders = (aoa[tableStartIdx] || []).map((h: any) => String(h || '').trim());
+          const autoMap = buildAutoMapping(tableHeaders);
           
-          // 获取明细表头
-          const tableHeaders = (aoa[tableStartIdx] || []).map(h => String(h || '').trim());
-          
-          // 读取表格数据行
           for (let i = tableStartIdx + 1; i < endIdx; i++) {
             const rowData = aoa[i];
-            if (!rowData || rowData.every(c => c === "")) break; // 遇空行结束明细表
-            
-            if (cardRules.tableEndRegex && new RegExp(cardRules.tableEndRegex).test(String(rowData[0] || ''))) {
-              break;
-            }
+            if (!rowData || rowData.every((c: any) => c === "")) break;
+            if (cardRules.tableEndRegex && new RegExp(cardRules.tableEndRegex).test(String(rowData[0] || ''))) break;
+            if (excelRule.skipRowsWith?.some(w => rowData.some((c: any) => String(c).includes(w)))) continue;
 
-            // 根据映射转换
             const item: Record<string, any> = { ...cardMeta };
-            
-            // 填充映射字段
+            // 用自动映射填充
+            Object.entries(autoMap).forEach(([colStr, fieldKey]) => {
+              const ci = Number(colStr);
+              if (ci < rowData.length) {
+                item[fieldKey] = String(rowData[ci] || '').trim();
+              }
+            });
+            // 也用 rule.mappings 补充
             rule.mappings.forEach(m => {
               if (m.defaultValue !== undefined && m.defaultValue !== "") {
-                item[m.field] = m.defaultValue;
-              } else if (m.column) {
-                const colIdx = tableHeaders.indexOf(m.column);
-                if (colIdx !== -1 && colIdx < rowData.length) {
-                  item[m.field] = String(rowData[colIdx] || '').trim();
-                }
-              } else if (m.columnIndex !== undefined && m.columnIndex < rowData.length) {
-                item[m.field] = String(rowData[m.columnIndex] || '').trim();
+                if (!item[m.field]) item[m.field] = m.defaultValue;
               }
             });
 
-            results.push(item);
+            if (Object.values(item).some(v => v !== "" && v !== undefined)) {
+              results.push(item);
+            }
           }
         });
-        
         return;
       }
 
-      // 2. 是否是矩阵转置布局
+      // ===================== 矩阵转置 =====================
       if (excelRule?.matrixPivot?.enabled) {
         const pivotRule = excelRule.matrixPivot;
         const pivotHeaderIdx = pivotRule.pivotHeaderRow - 1;
         const headerRow = aoa[pivotHeaderIdx] || [];
         
-        // 数据行起始
         const dataStartIdx = (excelRule.dataStartRow || 3) - 1;
-        const dataEndOffset = excelRule.dataEndRowOffset || 0;
-        const dataEndIdx = aoa.length - dataEndOffset;
+        const dataEndIdx = aoa.length - (excelRule.dataEndRowOffset || 0);
 
-        // 获取 SKU 字段的映射列头
-        const skuColumns = pivotRule.skuFields; // [{field, column}]
+        const skuColumns = pivotRule.skuFields;
 
-        // 遍历行
         for (let i = dataStartIdx; i < dataEndIdx; i++) {
           const rowData = aoa[i];
-          if (!rowData || rowData.every(c => c === "")) continue;
-          
-          // 检查跳过关键字
-          if (excelRule.skipRowsWith?.some(word => rowData.some(c => String(c).includes(word)))) {
-            continue;
-          }
+          if (!rowData || rowData.every((c: any) => c === "")) continue;
+          if (excelRule.skipRowsWith?.some(w => rowData.some((c: any) => String(c).includes(w)))) continue;
 
-          // 提取 SKU 字段值
           const skuValues: Record<string, any> = {};
           skuColumns.forEach(sc => {
-            // 在表头行中匹配列名
-            const colIdx = headerRow.findIndex(h => String(h).trim() === sc.column);
-            if (colIdx !== -1) {
-              skuValues[sc.field] = String(rowData[colIdx] || '').trim();
-            }
+            const colIdx = headerRow.findIndex((h: any) => String(h).trim() === sc.column || String(h).trim().includes(sc.column));
+            if (colIdx !== -1) skuValues[sc.field] = String(rowData[colIdx] || '').trim();
           });
 
-          // 针对矩阵列进行转置
-          // 矩阵列从 pivotColumnsStart (1-based) 开始，到行末尾
           const colStartIdx = pivotRule.pivotColumnsStart - 1;
           for (let j = colStartIdx; j < rowData.length; j++) {
             const qtyStr = String(rowData[j] || '').trim();
             if (!qtyStr || qtyStr === "0") continue;
-            
             const qty = Number(qtyStr);
-            if (isNaN(qty) || qty <= 0) continue; // 只提取有效正数发货数量
+            if (isNaN(qty) || qty <= 0) continue;
 
             const storeName = String(headerRow[j] || '').trim();
             if (!storeName) continue;
@@ -231,151 +293,193 @@ export class RuleEngine {
               [pivotRule.targetField]: storeName,
               [pivotRule.valueField]: qty
             };
-
-            // 填充其他带默认值或静态值的映射
             rule.mappings.forEach(m => {
-              if (m.defaultValue !== undefined && m.defaultValue !== "") {
-                record[m.field] = m.defaultValue;
-              }
+              if (m.defaultValue && !record[m.field]) record[m.field] = m.defaultValue;
             });
-
             results.push(record);
           }
         }
         return;
       }
 
-      // 3. 标准表格（可能含干扰头、尾部提取、复合拆分、跨行聚合）
-      const headerRowIdx = (excelRule?.headerRow || 1) - 1;
-      const headers = (aoa[headerRowIdx] || []).map(h => String(h || '').trim());
+      // ===================== 标准表格 =====================
       
-      const dataStartIdx = (excelRule?.dataStartRow || 2) - 1;
+      // 智能寻找表头行：优先使用规则中的 headerRow，否则自动探测
+      let headerRowIdx = (excelRule?.headerRow || 1) - 1;
+      
+      // 如果规则没指定或指定的行不像表头，自动探测
+      const specifiedHeaders = (aoa[headerRowIdx] || []).map((h: any) => String(h || '').trim());
+      const specifiedMatchCount = specifiedHeaders.filter((h: string) => 
+        h && standardFields.some(f => f.aliases.some(a => h.includes(a)))
+      ).length;
+      
+      if (specifiedMatchCount < 2) {
+        // 自动找匹配最多的行作为表头
+        let bestCount = specifiedMatchCount;
+        for (let r = 0; r < Math.min(10, aoa.length); r++) {
+          const row = aoa[r] || [];
+          const rowStr = row.map((c: any) => String(c || '').trim());
+          const cnt = rowStr.filter((s: string) => s && standardFields.some(f => f.aliases.some(a => s.includes(a)))).length;
+          if (cnt > bestCount) {
+            bestCount = cnt;
+            headerRowIdx = r;
+          }
+        }
+      }
+      
+      const headers = (aoa[headerRowIdx] || []).map((h: any) => String(h || '').trim());
+      const dataStartIdx = (excelRule?.dataStartRow || headerRowIdx + 2) - 1;
       const dataEndOffset = excelRule?.dataEndRowOffset || 0;
-      const dataEndIdx = aoa.length - dataEndOffset;
+      
+      // 智能计算数据结束行：找到"合计"/"总计"行或空行密集区
+      let dataEndIdx = aoa.length - dataEndOffset;
+      for (let i = dataStartIdx; i < aoa.length; i++) {
+        const row = aoa[i] || [];
+        const firstCell = String(row[0] || '').trim();
+        if (/^合计|^总计/.test(firstCell)) {
+          dataEndIdx = i;
+          break;
+        }
+      }
 
-      // 3.1 提取尾部/头部元数据
+      // 建立自动映射（核心改进！）
+      const autoMap = buildAutoMapping(headers);
+      
+      // 也建立规则 mapping 中 column 的精确/模糊映射
+      const ruleMappingIdx: Record<string, number> = {};
+      rule.mappings.forEach(m => {
+        if (m.column) {
+          let ci = headers.indexOf(m.column);
+          if (ci === -1) ci = headers.findIndex(h => h && (h.includes(m.column!) || m.column!.includes(h)));
+          if (ci !== -1) ruleMappingIdx[m.field] = ci;
+        } else if (m.columnIndex !== undefined) {
+          ruleMappingIdx[m.field] = m.columnIndex;
+        }
+      });
+
+      // 提取尾部/头部元数据
       const globalMeta: Record<string, any> = {};
+      
+      // 方法1：使用规则中的 footerExtraction
       if (excelRule?.footerExtraction?.enabled) {
         excelRule.footerExtraction.fields.forEach(f => {
           if (f.type === "cell" && f.cell) {
-            let targetRowIdx = f.cell.row - 1;
-            if (f.cell.row < 0) {
-              targetRowIdx = aoa.length + f.cell.row; // 支持倒数
-            }
-            const colIdx = f.cell.col - 1;
-            if (targetRowIdx >= 0 && targetRowIdx < aoa.length && colIdx >= 0 && colIdx < aoa[targetRowIdx].length) {
-              globalMeta[f.field] = String(aoa[targetRowIdx][colIdx] || '').trim();
+            let tr = f.cell.row < 0 ? aoa.length + f.cell.row : f.cell.row - 1;
+            const tc = f.cell.col - 1;
+            if (tr >= 0 && tr < aoa.length && tc >= 0 && tc < (aoa[tr]?.length || 0)) {
+              globalMeta[f.field] = String(aoa[tr][tc] || '').trim();
             }
           } else if (f.type === "keyword-offset" && f.keyword && f.offset) {
-            // 搜索关键字所在位置
-            let found = false;
             for (let r = 0; r < aoa.length; r++) {
-              for (let c = 0; c < aoa[r].length; c++) {
-                const valStr = String(aoa[r][c] || '');
-                if (valStr.includes(f.keyword)) {
-                  // 找到关键字，根据偏移定位
-                  const targetRowIdx = r + f.offset.row;
-                  const targetColIdx = c + f.offset.col;
-                  if (targetRowIdx >= 0 && targetRowIdx < aoa.length && targetColIdx >= 0 && targetColIdx < aoa[targetRowIdx].length) {
-                    // 还可以用正则从单元格文本里提取，例如 “收货门店：中通蓝网” 提取出 “中通蓝网”
-                    let textVal = String(aoa[targetRowIdx][targetColIdx] || '').trim();
-                    if (valStr.includes("：") || valStr.includes(":")) {
-                      // 如果关键字就在同一个格子里，且包含冒号
-                      const parts = valStr.split(/[:：]/);
-                      if (parts.length > 1 && f.offset.row === 0 && f.offset.col === 0) {
-                        textVal = parts[1].trim();
-                      }
+              for (let c = 0; c < (aoa[r]?.length || 0); c++) {
+                const val = String(aoa[r][c] || '');
+                if (val.includes(f.keyword)) {
+                  const tr = r + f.offset.row;
+                  const tc = c + f.offset.col;
+                  if (tr >= 0 && tr < aoa.length && tc >= 0 && tc < (aoa[tr]?.length || 0)) {
+                    let text = String(aoa[tr][tc] || '').trim();
+                    // 如果关键字和值在同一格子里（如"收货门店：某某店"），提取冒号后面的部分
+                    if (f.offset.row === 0 && f.offset.col === 0 && /[:：]/.test(val)) {
+                      const parts = val.split(/[:：]/);
+                      if (parts.length > 1) text = parts.slice(1).join(":").trim();
                     }
-                    globalMeta[f.field] = textVal;
-                    found = true;
-                    break;
+                    if (text) globalMeta[f.field] = text;
                   }
+                  return; // 只取第一个匹配
                 }
               }
-              if (found) break;
             }
           }
         });
       }
+      
+      // 方法2：通用尾部扫描（自动补充未提取到的收货信息）
+      if (!globalMeta.receiverName && !globalMeta.receiverStore) {
+        const footerMeta = extractFooterInfo(aoa, dataEndIdx);
+        Object.entries(footerMeta).forEach(([k, v]) => {
+          if (!globalMeta[k]) globalMeta[k] = v;
+        });
+      }
+      
+      // 方法3：从标题行提取门店名（如"尹三顺自助烤肉（银泰店）出库单"）
+      if (!globalMeta.receiverStore) {
+        const titleStore = extractStoreFromTitle(aoa, headerRowIdx);
+        if (titleStore) globalMeta.receiverStore = titleStore;
+      }
 
-      // 3.2 遍历解析数据行
+      // 遍历解析数据行
       const parsedRows: any[] = [];
-      for (let i = dataStartIdx; i < dataEndIdx; i++) {
+      for (let i = Math.max(headerRowIdx + 1, dataStartIdx); i < dataEndIdx; i++) {
         const rowData = aoa[i];
-        if (!rowData || rowData.every(c => c === "")) continue;
-
-        // 检查跳过关键字
-        if (excelRule?.skipRowsWith?.some(word => rowData.some(c => String(c).includes(word)))) {
-          continue;
-        }
+        if (!rowData || rowData.every((c: any) => c === "")) continue;
+        if (excelRule?.skipRowsWith?.some(w => rowData.some((c: any) => String(c).includes(w)))) continue;
 
         const item: Record<string, any> = { ...globalMeta };
 
-        // 映射常规字段
+        // 优先使用自动映射（别名匹配）
+        Object.entries(autoMap).forEach(([colStr, fieldKey]) => {
+          const ci = Number(colStr);
+          if (ci < rowData.length) {
+            const val = String(rowData[ci] || '').trim();
+            if (val) item[fieldKey] = val;
+          }
+        });
+        
+        // 再用规则 mapping 补充（包含 defaultValue）
+        Object.entries(ruleMappingIdx).forEach(([fieldKey, ci]) => {
+          if (!item[fieldKey] && ci < rowData.length) {
+            const val = String(rowData[ci] || '').trim();
+            if (val) item[fieldKey] = val;
+          }
+        });
+        
         rule.mappings.forEach(m => {
           if (m.defaultValue !== undefined && m.defaultValue !== "") {
-            item[m.field] = m.defaultValue;
-          } else if (m.column) {
-            const colIdx = headers.indexOf(m.column);
-            if (colIdx !== -1 && colIdx < rowData.length) {
-              item[m.field] = String(rowData[colIdx] || '').trim();
-            }
-          } else if (m.columnIndex !== undefined && m.columnIndex < rowData.length) {
-            item[m.field] = String(rowData[m.columnIndex] || '').trim();
+            if (!item[m.field]) item[m.field] = m.defaultValue;
           }
         });
 
-        // 3.3 复合单元格拆分
+        // 复合单元格拆分
         if (excelRule?.compositeSplit?.enabled && excelRule.compositeSplit.field) {
           const splitRule = excelRule.compositeSplit;
           const targetValue = String(item[splitRule.field] || '');
-          
           if (targetValue) {
-            // 按拆分字符拆成多个子条目
             const subItems = targetValue.split(new RegExp(splitRule.splitPattern));
-            subItems.forEach(subText => {
-              const cleanSubText = subText.trim();
-              if (!cleanSubText) return;
-
-              const match = cleanSubText.match(new RegExp(splitRule.regexExtract));
+            subItems.forEach(sub => {
+              const clean = sub.trim();
+              if (!clean) return;
+              const match = clean.match(new RegExp(splitRule.regexExtract));
               if (match) {
                 const subItem = { ...item };
-                // 替换对应的字段值
-                const skuName = match[splitRule.skuNameGroup];
-                const qtyVal = match[splitRule.qtyGroup];
-
-                subItem["skuName"] = skuName.trim();
-                subItem["quantity"] = Number(qtyVal);
-
+                subItem["skuName"] = match[splitRule.skuNameGroup]?.trim();
+                subItem["quantity"] = Number(match[splitRule.qtyGroup]);
                 parsedRows.push(subItem);
               }
             });
-            continue; // 原行数据已经拆分，不直接加入 parsedRows
+            continue;
           }
         }
 
-        parsedRows.push(item);
+        // 过滤掉没有任何实质数据的行
+        const hasData = ["skuCode", "skuName", "quantity", "receiverStore", "receiverName"].some(
+          k => item[k] && String(item[k]).trim() !== ""
+        );
+        if (hasData) {
+          parsedRows.push(item);
+        }
       }
 
-      // 3.4 跨行聚合 (湖南仓数据：聚合收货人)
+      // 跨行聚合
       if (excelRule?.rowAggregation?.enabled && excelRule.rowAggregation.groupByField) {
         const groupField = excelRule.rowAggregation.groupByField;
-        let lastValidRow: any = null;
-
-        parsedRows.forEach((row) => {
-          if (lastValidRow && row[groupField] && row[groupField] === lastValidRow[groupField]) {
-            // 同一单号。如果当前行某些收货信息缺失，则自动继承上一次的收货信息
-            const shareFields = ["receiverName", "receiverPhone", "receiverAddress", "receiverStore", "senderName", "senderPhone", "senderAddress"];
-            shareFields.forEach(f => {
-              if ((row[f] === undefined || row[f] === null || row[f] === "") && lastValidRow[f]) {
-                row[f] = lastValidRow[f];
-              }
+        let lastValid: any = null;
+        parsedRows.forEach(row => {
+          if (lastValid && row[groupField] && row[groupField] === lastValid[groupField]) {
+            ["receiverName", "receiverPhone", "receiverAddress", "receiverStore"].forEach(f => {
+              if (!row[f] && lastValid[f]) row[f] = lastValid[f];
             });
           }
-          // 只要当前行有收件人等字段，就更新 lastValidRow
-          if (row.receiverName || row.receiverStore) {
-            lastValidRow = row;
-          }
+          if (row.receiverName || row.receiverStore) lastValid = row;
         });
       }
 
@@ -386,14 +490,13 @@ export class RuleEngine {
   }
 
   /**
-   * 执行 PDF/Word 纯文本规则解析
+   * PDF/Word 纯文本解析
    */
   static parseText(text: string, rule: RuleConfig): any[] {
     const results: any[] = [];
     const textRule = rule.text;
     if (!textRule) return results;
 
-    // 1. 拆分记录 (如果有多单)
     let records = [text];
     if (textRule.splitPattern) {
       records = text.split(new RegExp(textRule.splitPattern)).map(r => r.trim()).filter(Boolean);
@@ -402,43 +505,37 @@ export class RuleEngine {
     records.forEach(recordText => {
       const recordData: Record<string, any> = {};
 
-      // 2. 提取规则字段 (头部/尾部元信息)
       textRule.fields.forEach(f => {
-        const regex = new RegExp(f.regexPattern);
-        const match = recordText.match(regex);
-        if (match && match[1]) {
-          recordData[f.field] = match[1].trim();
+        try {
+          const regex = new RegExp(f.regexPattern);
+          const match = recordText.match(regex);
+          if (match && match[1]) recordData[f.field] = match[1].trim();
+        } catch (e) {
+          // 正则无效时跳过
         }
       });
 
-      // 填充默认值
       rule.mappings.forEach(m => {
-        if (m.defaultValue !== undefined && m.defaultValue !== "") {
-          recordData[m.field] = m.defaultValue;
-        }
+        if (m.defaultValue && !recordData[m.field]) recordData[m.field] = m.defaultValue;
       });
 
-      // 3. 提取明细表 (多行物品)
       if (textRule.tableRowRegex && textRule.tableFields) {
         const rowRegex = new RegExp(textRule.tableRowRegex, 'g');
         const lines = recordText.split("\n");
         let hasItems = false;
 
         lines.forEach(line => {
-          // 重置正则的 lastIndex (针对带 'g' 标签的正则)
           rowRegex.lastIndex = 0;
           const match = rowRegex.exec(line);
           if (match) {
             const item = { ...recordData };
-            textRule.tableFields!.forEach((fieldKey, idx) => {
-              // match[0] 是整行，捕获组从 1 开始
-              const matchVal = match[idx + 1];
-              if (matchVal !== undefined) {
-                // 如果是数值，转换成数值类型
-                if (fieldKey === "quantity" || fieldKey === "weight") {
-                  item[fieldKey] = Number(matchVal.trim());
-                } else {
-                  item[fieldKey] = matchVal.trim();
+            textRule.tableFields!.forEach((fk, idx) => {
+              const mv = match[idx + 1];
+              if (mv !== undefined) {
+                if (fk === "quantity" || fk === "weight") {
+                  item[fk] = Number(mv.trim());
+                } else if (fk !== "_index") {
+                  item[fk] = mv.trim();
                 }
               }
             });
@@ -447,15 +544,11 @@ export class RuleEngine {
           }
         });
 
-        // 如果没有提取到物品明细，但提取到了元信息，则作为单行加入 (防空)
         if (!hasItems && Object.keys(recordData).length > 0) {
           results.push(recordData);
         }
       } else {
-        // 如果没有明细表定义，直接存这一整单元信息
-        if (Object.keys(recordData).length > 0) {
-          results.push(recordData);
-        }
+        if (Object.keys(recordData).length > 0) results.push(recordData);
       }
     });
 

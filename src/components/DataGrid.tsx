@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from "react";
-import { Table, Input, Button, Space, Tag, Select } from "antd";
+import { Table, Input, Button, Space, Tag } from "antd";
 import { standardFields } from "@/utils/excel";
 import { ValidationError } from "@/utils/validation";
 import * as XLSX from "xlsx";
@@ -12,13 +12,6 @@ interface DataGridProps {
   onRemoveRow: (index: number) => void;
   onAddRow: () => void;
 }
-
-// 温层选项
-const TEMP_ZONE_OPTIONS = [
-  { label: "常温", value: "常温" },
-  { label: "冷藏", value: "冷藏" },
-  { label: "冷冻", value: "冷冻" },
-];
 
 // 可编辑单元格组件 — 点击后才变成 Input
 const EditableCell = React.memo(({
@@ -79,31 +72,6 @@ const EditableCell = React.memo(({
     }
   };
 
-  // 温层字段用下拉选择
-  if (fieldKey === "tempZone") {
-    return (
-      <div>
-        <Select
-          value={localVal || undefined}
-          options={TEMP_ZONE_OPTIONS}
-          onChange={(v) => { setLocalVal(v); onChange(v); }}
-          size="small"
-          variant="borderless"
-          placeholder="选择温层"
-          style={{
-            width: '100%',
-            backgroundColor: error ? '#fff2f0' : 'transparent',
-          }}
-          status={error ? "error" : undefined}
-        />
-        {error && (
-          <div style={{ color: '#ff4d4f', fontSize: 11, lineHeight: '16px', paddingLeft: 6 }}>
-            {error.message}
-          </div>
-        )}
-      </div>
-    );
-  }
 
   if (editing) {
     return (
@@ -339,7 +307,7 @@ export const DataGrid: React.FC<DataGridProps> = ({
       <Table
         columns={columns}
         dataSource={localData.map((d, i) => ({ ...d, key: i }))}
-        pagination={false}
+        pagination={pagination}
         scroll={{ x: 1600, y: 500 }}
         size="small"
         bordered
