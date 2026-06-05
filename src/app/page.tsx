@@ -26,7 +26,7 @@ const { Title, Text } = Typography;
 
 export default function Home() {
   // ========= 状态管理 =========
-  const [step, setStep] = useState<"idle" | "parsing" | "preview" | "submitting" | "done" | "failed">("idle");
+  const [step, setStep] = useState<"idle" | "uploaded" | "parsing" | "preview" | "submitting" | "done" | "failed">("idle");
   const [progress, setProgress] = useState({ percent: 0, current: 0, total: 0, label: "" });
   const [submitting, setSubmitting] = useState(false);
   const [parseError, setParseError] = useState("");
@@ -119,20 +119,31 @@ export default function Home() {
     }, 20);
   };
 
-  // ========= 上传文件并处理 =========
+  // ========= 上传文件（仅记录，不立即解析） =========
   const handleFileSelect = async (file: File) => {
     setCurrentFile(file);
     setFileName(file.name);
-    setStep("parsing");
-    
-    // 如果用户选择新建解析规则（大模型 AI 辅助）
+    setStep("uploaded"); // 进入"已上传，待选规则"状态
+    setSelectedRuleId("ai-detect"); // 默认选中新建规则
+    message.success(`文件 "${file.name}" 上传成功，请选择解析规则`);
+  };
+
+  // ========= 选择规则后开始解析 =========
+  const handleStartParse = async () => {
+    if (!currentFile) {
+      message.error("请先上传文件");
+      return;
+    }
+
     if (selectedRuleId === "ai-detect") {
+      // 走 AI 辅助生成规则流程
+      setStep("parsing");
       setProgress({ percent: 10, current: 0, total: 100, label: "正在上传并分析文件物理特征..." });
       
       try {
-        // 1. 调用后端接口分析文件特征，生成样本数据
+        // 1. 调用后端接口分析文件特征
         const analyzeFormData = new FormData();
-        analyzeFormData.append("file", file);
+        analyzeFormData.append("file", currentFile);
         const analyzeRes = await fetch("/api/mapping/analyze-file", {
           method: "POST",
           body: analyzeFormData
@@ -145,10 +156,9 @@ export default function Home() {
         
         const analyzeData = await analyzeRes.json();
 
-        // 提取 Excel 原始表头列名，供 MappingModal 下拉选择
+        // 提取 Excel 原始表头列名
         if (analyzeData.excelSample?.sheets?.[0]?.aoa) {
           const aoa = analyzeData.excelSample.sheets[0].aoa;
-          // 找到第一个非空行作为表头（通常是第2行，第1行可能是说明文字）
           let headerRow = aoa[0] || [];
           for (let i = 0; i < Math.min(aoa.length, 5); i++) {
             const row = aoa[i] || [];
@@ -160,14 +170,14 @@ export default function Home() {
           setFileColumns([]);
         }
         
-        // 2. 调用大模型（或启发式回退）生成推荐规则
+        // 2. 调用大模型生成推荐规则
         setProgress({ percent: 50, current: 0, total: 100, label: "大模型正在智能推理匹配规则..." });
         const generateRes = await fetch("/api/mapping/generate-rule", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             fileType: analyzeData.fileType,
-            fileName: file.name,
+            fileName: currentFile.name,
             excelSample: analyzeData.excelSample,
             sampleTextText: analyzeData.sampleTextText || analyzeData.textSample || "",
           })
@@ -191,7 +201,7 @@ export default function Home() {
         // 3. 开启规则确认弹窗
         setAiRule(generateData.rule);
         setRuleModalOpen(true);
-        setStep("idle"); // 规则模态框开启，主页返回就绪
+        setStep("uploaded"); // 规则模态框开启，主页返回已上传状态
       } catch (err: any) {
         message.error("大模型分析文件失败: " + err.message);
         setParseError(err.message || "大模型分析文件特征失败");
@@ -202,12 +212,11 @@ export default function Home() {
       const chosenRule = rulesList.find(r => r.id === selectedRuleId);
       if (!chosenRule) {
         message.error("未找到所选解析规则，请检查");
-        setStep("idle");
         return;
       }
       
       const ruleConfig: RuleConfig = JSON.parse(chosenRule.mappings);
-      await executeParse(file, ruleConfig);
+      await executeParse(currentFile, ruleConfig);
     }
   };
 
@@ -641,127 +650,172 @@ export default function Home() {
             <Card 
               title={
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
-                  <span style={{ fontWeight: 'bold' }}>📤 模块一 & 二：解析规则选择与文件上传</span>
+                  <span style={{ fontWeight: 'bold' }}>📤 文件上传与智能解析</span>
                   {rulesLoading && <Spin size="small" />}
                 </div>
               }
               variant="borderless"
               style={{ marginBottom: 24, borderRadius: 12, boxShadow: '0 4px 16px rgba(0,0,0,0.05)' }}
             >
-              <div style={{ marginBottom: 20 }}>
-                <span style={{ display: 'block', marginBottom: 8, fontWeight: 500, color: '#4e5969' }}>
-                  请先选择匹配该文件的解析规则模板：
-                </span>
-                <Select
-                  style={{ width: '100%', height: 40 }}
-                  value={selectedRuleId}
-                  onChange={setSelectedRuleId}
-                  options={[
-                    { label: "✨ 新建解析规则 (通过大模型 AI 预处理分析)", value: "ai-detect" },
-                    ...rulesList.map(r => ({ label: `📋 [已存模板] ${r.templateName || r.fingerprint}`, value: r.id }))
-                  ]}
-                  optionRender={(option) => {
-                    // "新建解析规则" 选项不显示删除按钮
-                    if (option.value === "ai-detect") {
-                      return <span>{option.label}</span>;
-                    }
-                    return (
-                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
-                        <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{option.label}</span>
-                        <DeleteOutlined
-                          style={{ color: '#ff4d4f', fontSize: 14, marginLeft: 8, flexShrink: 0 }}
-                          onClick={(e) => {
-                            e.stopPropagation(); // 阻止选中该项
-                            const rule = rulesList.find(r => r.id === option.value);
-                            if (!rule) return;
-                            Modal.confirm({
-                              title: "确认删除该解析规则？",
-                              content: `规则名称：${rule.templateName || rule.fingerprint}`,
-                              okText: "删除",
-                              okButtonProps: { danger: true },
-                              onOk: async () => {
-                                try {
-                                  await fetch(`/api/mapping?id=${rule.id}`, { method: "DELETE" });
-                                  message.success("规则已删除");
-                                  if (selectedRuleId === rule.id) {
-                                    setSelectedRuleId("ai-detect");
-                                  }
-                                  fetchRules();
-                                } catch { message.error("删除失败"); }
-                              }
-                            });
-                          }}
-                        />
-                      </div>
-                    );
-                  }}
-                />
-                {/* 规则管理操作按钮 */}
-                {selectedRuleId && selectedRuleId !== "ai-detect" && (
-                  <Space style={{ marginTop: 8 }}>
-                    <Button 
-                      size="small" type="link" danger
-                      icon={<DeleteOutlined />}
-                      onClick={async () => {
-                        const rule = rulesList.find(r => r.id === selectedRuleId);
-                        if (!rule) return;
-                        Modal.confirm({
-                          title: "确认删除该解析规则？",
-                          content: `规则名称：${rule.templateName || rule.fingerprint}`,
-                          okText: "删除",
-                          okButtonProps: { danger: true },
-                          onOk: async () => {
-                            try {
-                              await fetch(`/api/mapping?id=${rule.id}`, { method: "DELETE" });
-                              message.success("规则已删除");
-                              setSelectedRuleId("ai-detect");
-                              fetchRules();
-                            } catch { message.error("删除失败"); }
-                          }
-                        });
-                      }}
-                    >删除规则</Button>
-                    <Button 
-                      size="small" type="link"
-                      icon={<CopyOutlined />}
-                      onClick={async () => {
-                        const rule = rulesList.find(r => r.id === selectedRuleId);
-                        if (!rule) return;
-                        try {
-                          const mappings = typeof rule.mappings === 'string' ? JSON.parse(rule.mappings) : rule.mappings;
-                          await fetch("/api/mapping", {
-                            method: "POST",
-                            headers: { "Content-Type": "application/json" },
-                            body: JSON.stringify({
-                              fingerprint: `${rule.fingerprint}-copy-${Date.now()}`,
-                              mappings,
-                              templateName: `${rule.templateName || "规则"} (副本)`
-                            })
-                          });
-                          message.success("规则已复制");
-                          fetchRules();
-                        } catch { message.error("复制失败"); }
-                      }}
-                    >复制规则</Button>
-                    <Button 
-                      size="small" type="link"
-                      icon={<EditOutlined />}
-                      onClick={() => {
-                        const rule = rulesList.find(r => r.id === selectedRuleId);
-                        if (!rule) return;
-                        try {
-                          const parsed = typeof rule.mappings === 'string' ? JSON.parse(rule.mappings) : rule.mappings;
-                          setAiRule(parsed);
-                          setRuleModalOpen(true);
-                        } catch { message.error("规则格式解析失败"); }
-                      }}
-                    >编辑规则</Button>
-                  </Space>
-                )}
-              </div>
-
-              {step !== "parsing" && step !== "failed" && !validData.length && (
+              {/* ① 上传区域（仅在 idle 状态时显示） */}
+              {step === "idle" && !validData.length && (
                 <UploadZone onFileSelect={handleFileSelect} />
+              )}
+
+              {/* ② 文件已上传，显示文件信息 + 规则选择区 */}
+              {step === "uploaded" && currentFile && (
+                <div>
+                  {/* 已上传文件信息卡片 */}
+                  <div style={{ 
+                    padding: '16px 20px', 
+                    backgroundColor: '#e8fafa', 
+                    border: '1px solid #b5e8e8', 
+                    borderRadius: 10,
+                    marginBottom: 20,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between'
+                  }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                      <FileTextOutlined style={{ fontSize: 24, color: '#0fc6c2' }} />
+                      <div>
+                        <Text strong style={{ fontSize: 15 }}>{currentFile.name}</Text>
+                        <Text type="secondary" style={{ marginLeft: 12 }}>
+                          {(currentFile.size / 1024).toFixed(1)} KB · <Tag color="blue" style={{ margin: 0 }}>{currentFile.name.split('.').pop()?.toUpperCase()}</Tag>
+                        </Text>
+                      </div>
+                    </div>
+                    <Button 
+                      size="small" 
+                      danger 
+                      onClick={() => {
+                        setCurrentFile(null);
+                        setFileName("");
+                        setStep("idle");
+                      }}
+                    >
+                      重新选择文件
+                    </Button>
+                  </div>
+
+                  {/* 规则选择区域 */}
+                  <div style={{ marginBottom: 20 }}>
+                    <span style={{ display: 'block', marginBottom: 8, fontWeight: 500, color: '#4e5969' }}>
+                      请选择解析规则模板：
+                    </span>
+                    <Select
+                      style={{ width: '100%', height: 40 }}
+                      value={selectedRuleId}
+                      onChange={setSelectedRuleId}
+                      options={[
+                        { label: "✨ 新建解析规则 (通过大模型 AI 预处理分析)", value: "ai-detect" },
+                        ...rulesList.map(r => ({ label: `📋 [已存模板] ${r.templateName || r.fingerprint}`, value: r.id }))
+                      ]}
+                      optionRender={(option) => {
+                        if (option.value === "ai-detect") {
+                          return <span>{option.label}</span>;
+                        }
+                        return (
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
+                            <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{option.label}</span>
+                            <DeleteOutlined
+                              style={{ color: '#ff4d4f', fontSize: 14, marginLeft: 8, flexShrink: 0 }}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                const rule = rulesList.find(r => r.id === option.value);
+                                if (!rule) return;
+                                Modal.confirm({
+                                  title: "确认删除该解析规则？",
+                                  content: `规则名称：${rule.templateName || rule.fingerprint}`,
+                                  okText: "删除",
+                                  okButtonProps: { danger: true },
+                                  onOk: async () => {
+                                    try {
+                                      await fetch(`/api/mapping?id=${rule.id}`, { method: "DELETE" });
+                                      message.success("规则已删除");
+                                      if (selectedRuleId === rule.id) {
+                                        setSelectedRuleId("ai-detect");
+                                      }
+                                      fetchRules();
+                                    } catch { message.error("删除失败"); }
+                                  }
+                                });
+                              }}
+                            />
+                          </div>
+                        );
+                      }}
+                    />
+                    {/* 规则管理操作按钮（选中已有规则时显示） */}
+                    {selectedRuleId && selectedRuleId !== "ai-detect" && (
+                      <Space style={{ marginTop: 8 }}>
+                        <Button 
+                          size="small" type="link"
+                          icon={<EditOutlined />}
+                          onClick={() => {
+                            const rule = rulesList.find(r => r.id === selectedRuleId);
+                            if (!rule) return;
+                            try {
+                              const parsed = typeof rule.mappings === 'string' ? JSON.parse(rule.mappings) : rule.mappings;
+                              setAiRule(parsed);
+                              setRuleModalOpen(true);
+                            } catch { message.error("规则格式解析失败"); }
+                          }}
+                        >编辑规则</Button>
+                        <Button 
+                          size="small" type="link"
+                          icon={<CopyOutlined />}
+                          onClick={async () => {
+                            const rule = rulesList.find(r => r.id === selectedRuleId);
+                            if (!rule) return;
+                            try {
+                              const mappings = typeof rule.mappings === 'string' ? JSON.parse(rule.mappings) : rule.mappings;
+                              await fetch("/api/mapping", {
+                                method: "POST",
+                                headers: { "Content-Type": "application/json" },
+                                body: JSON.stringify({
+                                  fingerprint: `${rule.fingerprint}-copy-${Date.now()}`,
+                                  mappings,
+                                  templateName: `${rule.templateName || "规则"} (副本)`
+                                })
+                              });
+                              message.success("规则已复制");
+                              fetchRules();
+                            } catch { message.error("复制失败"); }
+                          }}
+                        >复制规则</Button>
+                      </Space>
+                    )}
+                  </div>
+
+                  {/* 开始解析按钮 */}
+                  <div style={{ textAlign: 'right' }}>
+                    <Space>
+                      <Button 
+                        onClick={handleManualConfigure}
+                        icon={<SettingOutlined />}
+                      >
+                        手动配置规则
+                      </Button>
+                      <Button 
+                        type="primary" 
+                        size="large"
+                        icon={selectedRuleId === "ai-detect" ? <RobotOutlined /> : <ThunderboltOutlined />}
+                        onClick={handleStartParse}
+                        style={{ 
+                          background: 'linear-gradient(90deg, #0fc6c2 0%, #08979c 100%)',
+                          borderColor: '#0fc6c2',
+                          height: 44,
+                          paddingInline: 32,
+                          fontWeight: 'bold',
+                          fontSize: 15
+                        }}
+                      >
+                        {selectedRuleId === "ai-detect" ? "🤖 AI 智能分析并生成规则" : "⚡ 使用所选规则开始解析"}
+                      </Button>
+                    </Space>
+                  </div>
+                </div>
               )}
               
               {/* 解析实时进度条 */}
