@@ -592,7 +592,7 @@ export default function Home() {
         <div style={{ marginBottom: 20 }}>
           <Card 
             size="small"
-            bordered={false} 
+            variant="borderless" 
             style={{ backgroundColor: '#fff', borderRadius: 8, boxShadow: '0 2px 8px rgba(0,0,0,0.04)' }}
             title={
               <span style={{ fontWeight: 500, color: '#4e5969' }}>
@@ -640,7 +640,7 @@ export default function Home() {
                   {rulesLoading && <Spin size="small" />}
                 </div>
               }
-              bordered={false}
+              variant="borderless"
               style={{ marginBottom: 24, borderRadius: 12, boxShadow: '0 4px 16px rgba(0,0,0,0.05)' }}
             >
               <div style={{ marginBottom: 20 }}>
@@ -698,7 +698,7 @@ export default function Home() {
             {/* ===== 架构优势卡片 ===== */}
             <Card
               title={<span>🚀 万能智能解析核心能力</span>}
-              bordered={false}
+              variant="borderless"
               style={{ marginBottom: 24, borderRadius: 12, boxShadow: '0 4px 16px rgba(0,0,0,0.05)' }}
             >
               <Row gutter={16} style={{ color: '#4e5969', lineHeight: '28px' }}>
@@ -720,7 +720,7 @@ export default function Home() {
           <Col xs={24} lg={8}>
             <Card 
               title="⚡ 快捷操作" 
-              bordered={false} 
+              variant="borderless" 
               style={{ marginBottom: 24, borderRadius: 12, boxShadow: '0 4px 16px rgba(0,0,0,0.05)' }}
               size="small"
             >
@@ -758,7 +758,7 @@ export default function Home() {
 
             <Card 
               title="📑 下单字段定义与规范" 
-              bordered={false} 
+              variant="borderless" 
               style={{ borderRadius: 12, boxShadow: '0 4px 16px rgba(0,0,0,0.05)' }}
               size="small"
             >
@@ -962,7 +962,7 @@ export default function Home() {
         {/* ===== 模块五：已导入运单列表 (历史数据) ===== */}
         <Card
           title={<span>📦 模块五：已导入历史出库运单列表</span>}
-          bordered={false}
+          variant="borderless"
           style={{ borderRadius: 12, boxShadow: '0 4px 16px rgba(0,0,0,0.05)' }}
           extra={
             <Space wrap>
