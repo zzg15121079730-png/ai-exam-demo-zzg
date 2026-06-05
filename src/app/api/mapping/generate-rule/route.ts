@@ -1,5 +1,8 @@
 import { NextResponse } from "next/server";
 
+// Vercel Serverless 函数最大执行时间（秒）
+export const maxDuration = 60;
+
 export async function POST(request: Request) {
   // 提前声明，确保 catch 块也能访问到这些变量用于降级
   let fileType = "excel";
@@ -139,16 +142,28 @@ interface RuleConfig {
 4. 如果是 AI 推测出的映射，请在 \`mappings\` 的每一项中将 \`isGuess\` 设为 true。
 `;
 
+    // 裁剪 Excel 样本：只发前 6 行给大模型，减少 token 消耗加快响应
+    let trimmedSample = excelSample;
+    if (fileType === "excel" && excelSample?.sheets) {
+      trimmedSample = {
+        ...excelSample,
+        sheets: excelSample.sheets.map((s: any) => ({
+          ...s,
+          aoa: (s.aoa || []).slice(0, 6)
+        }))
+      };
+    }
+
     const userPrompt = `文件名: ${fileName}
 文件类型: ${fileType}
 样本数据:
-${fileType === "excel" ? JSON.stringify(excelSample, null, 2) : sampleTextText}
+${fileType === "excel" ? JSON.stringify(trimmedSample, null, 2) : sampleTextText}
 
 请为这个文件结构生成最适配的通用解析规则 JSON。`;
 
-    // 调用大模型（8秒超时，防止 Vercel Serverless 超时返回 502）
+    // 调用大模型（55秒超时，Vercel Hobby 最大 60 秒）
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 8000);
+    const timeoutId = setTimeout(() => controller.abort(), 55000);
 
     // 确保 BaseURL 末尾没有多余斜杠
     const cleanBaseUrl = finalBaseUrl.replace(/\/+$/, "");
