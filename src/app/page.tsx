@@ -41,7 +41,7 @@ export default function Home() {
   const [aiConfig, setAiConfig] = useState({
     apiKey: "sk-KWEokQJRaKCjsBEWGf2XdHDlDY6oGQiczo23Gue4fa5P7ofR",
     apiBaseUrl: "https://www.vbcode.io/v1",
-    modelName: "GPT5.4"
+    modelName: "gpt-5.4"
   });
 
   // 数据相关
@@ -67,7 +67,7 @@ export default function Home() {
     setAiConfig({
       apiKey: savedApiKey !== null ? savedApiKey : "sk-KWEokQJRaKCjsBEWGf2XdHDlDY6oGQiczo23Gue4fa5P7ofR",
       apiBaseUrl: savedBaseUrl || "https://www.vbcode.io/v1",
-      modelName: savedModel || "GPT5.4"
+      modelName: savedModel || "gpt-5.4"
     });
     fetchRules();
     fetchHistory();
