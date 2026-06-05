@@ -67,23 +67,19 @@ export default function HistoryPage() {
       width: 200,
     },
     {
-      title: '发件人',
-      key: 'sender',
-      render: (_: any, record: any) => (
-        <div>
-          <div>{record.senderName}</div>
-          <div className="text-gray-500 text-xs">{record.senderPhone}</div>
-        </div>
-      ),
-      width: 150,
+      title: '重量(kg)',
+      dataIndex: 'weight',
+      key: 'weight',
+      render: (text: number) => text || '-',
+      width: 90,
     },
     {
       title: '温层 / 重量 / 件数',
       key: 'goodsInfo',
       render: (_: any, record: any) => (
         <Space>
-          <Tag color="blue">{record.tempZone}</Tag>
-          <span className="text-sm text-gray-500">{record.weight}kg / {record.quantity}件</span>
+          <Tag color="blue">{record.tempArea}</Tag>
+          <span className="text-sm text-gray-500">{record.quantity}件</span>
         </Space>
       ),
       width: 200,

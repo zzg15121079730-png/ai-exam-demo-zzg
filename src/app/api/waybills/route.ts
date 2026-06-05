@@ -50,7 +50,7 @@ export async function POST(request: Request) {
       }, { status: 400 });
     }
 
-    // 映射并规范化运单数据 — 只保留考试要求的 10 个字段
+    // 映射并规范化运单数据
     const waybills = filteredData.map(item => ({
       externalCode: item.externalCode ? String(item.externalCode) : null,
       receiverStore: item.receiverStore ? String(item.receiverStore) : null,
@@ -60,6 +60,8 @@ export async function POST(request: Request) {
       skuCode: item.skuCode ? String(item.skuCode) : null,
       skuName: item.skuName ? String(item.skuName) : null,
       quantity: Math.round(Number(item.quantity) || 0),
+      weight: item.weight ? Number(item.weight) : null,
+      tempArea: item.tempArea ? String(item.tempArea) : null,
       skuSpec: item.skuSpec ? String(item.skuSpec) : null,
       remark: item.remark ? String(item.remark) : null,
       batchId,

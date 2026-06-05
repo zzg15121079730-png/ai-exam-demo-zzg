@@ -286,7 +286,7 @@ export const DataGrid: React.FC<DataGridProps> = ({
         return <Tag color="success" style={{ margin: 0 }}>通过</Tag>;
       }
     }
-  ], [errorMap, errorRowSet, handleCellChange, onRemoveRow]);
+  ], [errorMap, errorRowSet, warningRowSet, handleCellChange, onRemoveRow]);
 
   // 大数据集分页
   const pagination = localData.length > 100 ? {

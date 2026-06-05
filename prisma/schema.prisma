@@ -18,6 +18,8 @@ model Waybill {
   skuCode         String?  @map("sku_code")
   skuName         String?  @map("sku_name")
   quantity        Int?
+  weight          Float?
+  tempArea        String?  @map("temp_area")
   skuSpec         String?  @map("sku_spec")
   remark          String?
   batchId         String   @map("batch_id")

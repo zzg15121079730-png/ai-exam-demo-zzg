@@ -474,7 +474,7 @@ export default function Home() {
   // ========= 数据库重复检查（防抖） =========
   const dbCheckTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   
-  const checkDbDuplicates = useCallback((currentData: any[], currentErrors: ValidationError[]) => {
+  const checkDbDuplicates = useCallback((currentData: any[], _currentErrors: ValidationError[]) => {
     const codesToCheck = currentData.map(r => r.externalCode).filter(Boolean);
     if (codesToCheck.length === 0) return;
     
@@ -489,7 +489,6 @@ export default function Home() {
         });
         const dbData = await res.json();
         if (dbData.duplicates?.length > 0) {
-          const nonDbErrors = currentErrors.filter(e => e.message !== "与数据库已存在数据重复");
           const dbErrors: ValidationError[] = [];
           currentData.forEach((row, i) => {
             if (row.externalCode && dbData.duplicates.includes(row.externalCode)) {
@@ -501,7 +500,7 @@ export default function Home() {
               });
             }
           });
-          setErrors([...nonDbErrors, ...dbErrors]);
+          setErrors(prev => [...prev.filter(e => e.message !== "与数据库已存在数据重复"), ...dbErrors]);
         } else {
           setErrors(prev => prev.filter(e => e.message !== "与数据库已存在数据重复"));
         }
@@ -601,8 +600,8 @@ export default function Home() {
     { title: 'SKU编码', dataIndex: 'skuCode', width: 120 },
     { title: 'SKU名称', dataIndex: 'skuName', width: 140, ellipsis: true },
     { title: '数量', dataIndex: 'quantity', width: 70, align: 'center' as const },
-    { title: '发件人姓名', dataIndex: 'senderName', width: 100 },
-    { title: '温层', dataIndex: 'tempZone', width: 70, align: 'center' as const,
+    { title: '重量', dataIndex: 'weight', width: 80, align: 'center' as const },
+    { title: '温层', dataIndex: 'tempArea', width: 70, align: 'center' as const,
       render: (text: string) => {
         const colorMap: Record<string, string> = { '常温': 'default', '冷藏': 'blue', '冷冻': 'cyan' };
         return <Tag color={colorMap[text] || 'default'}>{text}</Tag>;
@@ -978,28 +977,25 @@ export default function Home() {
                   </tr>
                 </thead>
                 <tbody>
-                  {standardFields.filter(f => 
-                    // 只展示考试要求的核心10个字段
-                    !['senderName','senderPhone','senderAddress','weight','tempZone'].includes(f.key)
-                  ).map(f => (
+                  {standardFields.map(f => (
                     <tr key={f.key} style={{ borderBottom: '1px solid #f5f5f5' }}>
                       <td style={{ padding: '6px 0', fontWeight: 500 }}>{f.label}</td>
                       <td style={{ padding: '6px 0', textAlign: 'center' }}>
                         {f.required ? 
                           <Tag color="red" style={{ margin: 0, fontSize: 10 }}>是</Tag> : 
-                          ['receiverStore','receiverName','receiverPhone','receiverAddress'].includes(f.key) ?
-                          <Tag color="orange" style={{ margin: 0, fontSize: 10 }}>A/B组</Tag> :
                           <Tag style={{ margin: 0, fontSize: 10 }}>否</Tag>}
                       </td>
                       <td style={{ padding: '6px 0', color: '#86909c', fontSize: 12 }}>
                         {f.key === 'externalCode' && '订单唯一编号，用于去重聚合'}
-                        {f.key === 'receiverStore' && '收货门店，A组门店模式的核心字段'}
-                        {f.key === 'receiverName' && '收件人姓名，B组收件人模式字段'}
+                        {f.key === 'receiverStore' && '收货门店名称'}
+                        {f.key === 'receiverName' && '收件人姓名'}
                         {f.key === 'receiverPhone' && '收货联系人手机/座机电话'}
                         {f.key === 'receiverAddress' && '收货人完整详细地址'}
                         {f.key === 'skuCode' && 'SKU 编码，用于区分出库商品'}
                         {f.key === 'skuName' && 'SKU 名称，出库商品明细'}
-                        {f.key === 'quantity' && '发货数量，必须为正数'}
+                        {f.key === 'quantity' && '发货件数，必须为正整数'}
+                        {f.key === 'weight' && '货物重量(kg)，必须为正数'}
+                        {f.key === 'tempArea' && '配送温层，可选值：常温/冷藏/冷冻'}
                         {f.key === 'skuSpec' && '物品规格型号描述'}
                         {f.key === 'remark' && '其他附言备注信息'}
                       </td>
