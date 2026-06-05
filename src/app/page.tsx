@@ -40,13 +40,6 @@ export default function Home() {
   const [aiRule, setAiRule] = useState<RuleConfig | null>(null);
   const [fileColumns, setFileColumns] = useState<string[]>([]);
 
-  // AI 配置相关
-  const [aiConfig, setAiConfig] = useState({
-    apiKey: "",
-    apiBaseUrl: "https://api.deepseek.com/v1",
-    modelName: "deepseek-chat"
-  });
-
   // 数据相关
   const [validData, setValidData] = useState<any[]>([]);
   const [errors, setErrors] = useState<ValidationError[]>([]);
@@ -62,32 +55,11 @@ export default function Home() {
   const [submitResult, setSubmitResult] = useState<{ success: number; skipped: number; total: number } | null>(null);
   const [searchDateRange, setSearchDateRange] = useState<[Dayjs | null, Dayjs | null] | null>(null);
 
-  // ========= 加载 localStorage 配置 =========
+  // ========= 初始化 =========
   useEffect(() => {
-    const savedApiKey = localStorage.getItem("ai_api_key");
-    const savedBaseUrl = localStorage.getItem("ai_base_url");
-    const savedModel = localStorage.getItem("ai_model_name");
-    // 从 localStorage 恢复配置（API Key 主要由后端 env 提供，前端可选覆盖）
-    const finalModel = savedModel || "deepseek-chat";
-    const finalUrl = savedBaseUrl || "https://api.deepseek.com/v1";
-    const finalKey = savedApiKey || "";
-    setAiConfig({
-      apiKey: finalKey,
-      apiBaseUrl: finalUrl,
-      modelName: finalModel
-    });
     fetchRules();
     fetchHistory();
   }, []);
-
-  const saveAiConfig = (key: string, val: string) => {
-    setAiConfig(prev => {
-      const next = { ...prev, [key]: val };
-      localStorage.setItem(`ai_${key.replace(/[A-Z]/g, letter => `_${letter.toLowerCase()}`)}`, val);
-      return next;
-    });
-    message.success("AI 大模型配置保存成功");
-  };
 
   // ========= 获取解析规则列表 =========
   const fetchRules = async () => {
@@ -198,9 +170,6 @@ export default function Home() {
             fileName: file.name,
             excelSample: analyzeData.excelSample,
             sampleTextText: analyzeData.sampleTextText || analyzeData.textSample || "",
-            apiKey: aiConfig.apiKey,
-            apiBaseUrl: aiConfig.apiBaseUrl,
-            modelName: aiConfig.modelName
           })
         });
 
@@ -365,9 +334,6 @@ export default function Home() {
         const formData = new FormData();
         formData.append("file", file);
         formData.append("rule", JSON.stringify(rule));
-        formData.append("apiKey", aiConfig.apiKey);
-        formData.append("apiBaseUrl", aiConfig.apiBaseUrl);
-        formData.append("modelName", aiConfig.modelName);
 
         const res = await fetch("/api/mapping/parse-file", {
           method: "POST",
@@ -643,36 +609,13 @@ export default function Home() {
             title={
               <span style={{ fontWeight: 500, color: '#4e5969' }}>
                 <RobotOutlined style={{ color: '#0fc6c2', marginRight: 8 }} />
-                智能大模型接口配置 (当前已默认配置 VBCode.io 考试专用密钥)
+                智能大模型接口配置
               </span>
             }
           >
-            <Form layout="inline" size="middle" style={{ gap: 12 }}>
-              <Form.Item label="API Key">
-                <Input.Password 
-                  placeholder="DEEPSEEK_API_KEY" 
-                  value={aiConfig.apiKey} 
-                  onChange={e => saveAiConfig("apiKey", e.target.value)}
-                  style={{ width: 320 }}
-                />
-              </Form.Item>
-              <Form.Item label="Base URL">
-                <Input 
-                  placeholder="https://www.vbcode.io/v1" 
-                  value={aiConfig.apiBaseUrl} 
-                  onChange={e => saveAiConfig("apiBaseUrl", e.target.value)}
-                  style={{ width: 240 }}
-                />
-              </Form.Item>
-              <Form.Item label="Model Name">
-                <Input 
-                  placeholder="deepseek-chat" 
-                  value={aiConfig.modelName} 
-                  onChange={e => saveAiConfig("modelName", e.target.value)}
-                  style={{ width: 160 }}
-                />
-              </Form.Item>
-            </Form>
+            <Text type="secondary">
+              AI 大模型 API Key 已通过服务端环境变量安全配置，无需手动输入。上传文件后将自动调用大模型进行智能规则推理。
+            </Text>
           </Card>
         </div>
 

@@ -18,10 +18,10 @@ export async function POST(request: Request) {
     const filename = file.name;
     const buffer = Buffer.from(await file.arrayBuffer());
 
-    // 读取大模型配置参数（前端可传覆盖，或降级到 env 环境变量）
-    const apiKey = (formData.get("apiKey") as string) || process.env.DEEPSEEK_API_KEY || "";
-    let apiBaseUrl = (formData.get("apiBaseUrl") as string) || process.env.DEEPSEEK_API_BASE || "https://api.deepseek.com/v1";
-    const modelName = (formData.get("modelName") as string) || process.env.DEEPSEEK_MODEL || "deepseek-chat";
+    // 大模型配置直接从环境变量读取
+    const apiKey = process.env.DEEPSEEK_API_KEY || "";
+    let apiBaseUrl = process.env.DEEPSEEK_API_BASE || "https://api.deepseek.com/v1";
+    const modelName = process.env.DEEPSEEK_MODEL || "deepseek-chat";
 
     if (apiBaseUrl) {
       apiBaseUrl = apiBaseUrl.trim();

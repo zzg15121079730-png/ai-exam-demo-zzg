@@ -16,11 +16,9 @@ export async function POST(request: Request) {
     excelSample = body.excelSample || excelSample;
     sampleTextText = body.sampleTextText || body.textSample || sampleTextText;
 
-    const { apiKey, apiBaseUrl, modelName } = body;
-
-    const finalApiKey = apiKey || process.env.DEEPSEEK_API_KEY || "";
-    let finalBaseUrl = apiBaseUrl || process.env.DEEPSEEK_API_BASE || "https://api.deepseek.com/v1";
-    const finalModel = modelName || process.env.DEEPSEEK_MODEL || "deepseek-chat";
+    const finalApiKey = process.env.DEEPSEEK_API_KEY || "";
+    let finalBaseUrl = process.env.DEEPSEEK_API_BASE || "https://api.deepseek.com/v1";
+    const finalModel = process.env.DEEPSEEK_MODEL || "deepseek-chat";
 
     if (finalBaseUrl) {
       finalBaseUrl = finalBaseUrl.trim();
