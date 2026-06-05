@@ -64,10 +64,15 @@ export default function Home() {
     const savedApiKey = localStorage.getItem("ai_api_key");
     const savedBaseUrl = localStorage.getItem("ai_base_url");
     const savedModel = localStorage.getItem("ai_model_name");
+    // 自动迁移旧默认值到新值
+    const OLD_DEFAULTS_MODEL = ["deepseek-chat", "GPT5.4"];
+    const OLD_DEFAULTS_URL = ["https://api.vbcode.io/v1", "https://api.deepseek.com/v1"];
+    const finalModel = (!savedModel || OLD_DEFAULTS_MODEL.includes(savedModel)) ? "gpt-5.4" : savedModel;
+    const finalUrl = (!savedBaseUrl || OLD_DEFAULTS_URL.includes(savedBaseUrl)) ? "https://www.vbcode.io/v1" : savedBaseUrl;
     setAiConfig({
       apiKey: savedApiKey !== null ? savedApiKey : "sk-KWEokQJRaKCjsBEWGf2XdHDlDY6oGQiczo23Gue4fa5P7ofR",
-      apiBaseUrl: savedBaseUrl || "https://www.vbcode.io/v1",
-      modelName: savedModel || "gpt-5.4"
+      apiBaseUrl: finalUrl,
+      modelName: finalModel
     });
     fetchRules();
     fetchHistory();
