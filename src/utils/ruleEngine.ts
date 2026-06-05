@@ -12,6 +12,7 @@ export interface FieldMapping {
 export interface RuleConfig {
   id?: string;
   templateName?: string;
+  description?: string;
   fileType: "excel" | "pdf" | "word";
   excel?: {
     sheets?: string[];

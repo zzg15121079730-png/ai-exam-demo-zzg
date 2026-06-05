@@ -119,12 +119,44 @@ export default function Home() {
     }, 20);
   };
 
-  // ========= 上传文件（仅记录，不立即解析） =========
+  // ========= 上传文件（仅记录 + 提取列名，不立即解析） =========
   const handleFileSelect = async (file: File) => {
     setCurrentFile(file);
     setFileName(file.name);
     setStep("uploaded"); // 进入"已上传，待选规则"状态
     setSelectedRuleId("ai-detect"); // 默认选中新建规则
+
+    // 立即提取 Excel 文件的列名，供 MappingModal 下拉选择使用
+    const ext = file.name.split('.').pop()?.toLowerCase();
+    if (ext === 'xlsx' || ext === 'xls') {
+      try {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          try {
+            const data = e.target?.result;
+            const workbook = XLSX.read(data, { type: "binary" });
+            const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+            const aoa: any[][] = XLSX.utils.sheet_to_json(firstSheet, { header: 1, defval: "" });
+            // 智能找表头行：找前10行中非空列最多的那行
+            let headerRow = aoa[0] || [];
+            for (let i = 0; i < Math.min(aoa.length, 10); i++) {
+              const row = aoa[i] || [];
+              const nonEmpty = row.filter((c: any) => c !== "" && c != null).length;
+              if (nonEmpty >= 3) { headerRow = row; break; }
+            }
+            setFileColumns(headerRow.filter((c: any) => c !== "" && c != null).map(String));
+          } catch {
+            setFileColumns([]);
+          }
+        };
+        reader.readAsBinaryString(file);
+      } catch {
+        setFileColumns([]);
+      }
+    } else {
+      setFileColumns([]);
+    }
+
     message.success(`文件 "${file.name}" 上传成功，请选择解析规则`);
   };
 
@@ -156,19 +188,7 @@ export default function Home() {
         
         const analyzeData = await analyzeRes.json();
 
-        // 提取 Excel 原始表头列名
-        if (analyzeData.excelSample?.sheets?.[0]?.aoa) {
-          const aoa = analyzeData.excelSample.sheets[0].aoa;
-          let headerRow = aoa[0] || [];
-          for (let i = 0; i < Math.min(aoa.length, 5); i++) {
-            const row = aoa[i] || [];
-            const nonEmpty = row.filter((c: any) => c !== "" && c != null).length;
-            if (nonEmpty >= 3) { headerRow = row; break; }
-          }
-          setFileColumns(headerRow.filter((c: any) => c !== "" && c != null).map(String));
-        } else {
-          setFileColumns([]);
-        }
+        // 列名已在 handleFileSelect 上传时提取，此处无需重复
         
         // 2. 调用大模型生成推荐规则
         setProgress({ percent: 50, current: 0, total: 100, label: "大模型正在智能推理匹配规则..." });
@@ -411,10 +431,10 @@ export default function Home() {
   };
 
   // ========= 模态框规则确认并保存 =========
-  const handleRuleModalConfirm = async (confirmedRule: RuleConfig, parsedData?: any[]) => {
+  const handleRuleModalConfirm = async (confirmedRule: RuleConfig) => {
     setRuleModalOpen(false);
     setStep("parsing");
-    setProgress({ percent: 30, current: 0, total: 100, label: "正在保存规则..." });
+    setProgress({ percent: 20, current: 0, total: 100, label: "正在保存规则..." });
 
     try {
       // 后台保存规则（不阻塞主流程）
@@ -428,24 +448,15 @@ export default function Home() {
         })
       }).then(async (saveRes) => {
         if (saveRes.ok) {
-          const saved = await saveRes.json();
           fetchRules();
-          // 不自动切换选中的规则，保持用户当前选择
         }
       }).catch(() => {});
 
-      // 直接使用 MappingModal 中用户已编辑确认的数据
-      if (parsedData && parsedData.length > 0) {
-        setProgress({ percent: 60, current: 0, total: parsedData.length, label: "正在校验数据..." });
-        const { validData: vData, errors: eData } = validateStandardData(parsedData);
-        setValidData(vData);
-        setErrors(eData);
-        setStep("preview");
-        message.success(`共 ${vData.length} 条数据已就绪`);
-        checkDbDuplicates(vData, eData);
-      } else if (currentFile) {
+      // 确认规则后统一执行解析
+      if (currentFile) {
         await executeParse(currentFile, confirmedRule);
       } else {
+        message.error("文件丢失，请重新上传");
         setStep("idle");
       }
     } catch (e: any) {
@@ -560,6 +571,7 @@ export default function Home() {
         setSubmitResult({ success: successCount, skipped, total: validData.length });
         message.success(`成功提交 ${successCount} 条运单数据！`);
         setStep("done");
+        fetchHistory(1); // 自动刷新历史列表
       } else {
         const errData = await res.json().catch(() => ({}));
         message.error(errData.error || "提交失败，请稍后重试");
@@ -582,10 +594,10 @@ export default function Home() {
   // 已导入运单列表列定义
   const historyColumns = [
     { title: '外部编码', dataIndex: 'externalCode', width: 140 },
-    { title: '收货门店', dataIndex: 'receiverStore', width: 150, 
+    { title: '收货门店', dataIndex: 'receiverStore', width: 200, ellipsis: true,
       render: (text: string) => text ? <Tag color="cyan">{text}</Tag> : '-' 
     },
-    { title: '收件人姓名', dataIndex: 'receiverName', width: 100 },
+    { title: '收件人姓名', dataIndex: 'receiverName', width: 110 },
     { title: '收件人电话', dataIndex: 'receiverPhone', width: 120 },
     { title: '收件人地址', dataIndex: 'receiverAddress', width: 220, ellipsis: true },
     { title: 'SKU编码', dataIndex: 'skuCode', width: 120 },
@@ -942,66 +954,11 @@ export default function Home() {
               )}
             </Card>
 
-            {/* ===== 架构优势卡片 ===== */}
-            <Card
-              title={<span>🚀 万能智能解析核心能力</span>}
-              variant="borderless"
-              style={{ marginBottom: 24, borderRadius: 12, boxShadow: '0 4px 16px rgba(0,0,0,0.05)' }}
-            >
-              <Row gutter={16} style={{ color: '#4e5969', lineHeight: '28px' }}>
-                <Col span={12}>
-                  <p>• <strong>无硬编码适配</strong>：基于高度通用规则引擎配置，杜绝针对单文件的if-else逻辑</p>
-                  <p>• <strong>AI 辅助规则分析</strong>：支持大模型极速提取表头、定位尾部数据并生成推荐规则</p>
-                  <p>• <strong>试解析测试验证</strong>：内置数据流试运行检测，支持预览无误后再确认入库</p>
-                </Col>
-                <Col span={12}>
-                  <p>• <strong>多样物理提取</strong>：支持表尾散落定位、跨行继承合并、矩阵门店行列转置</p>
-                  <p>• <strong>高性能处理</strong>：纯前端秒级处理数千行 Excel 解析与校验，大列表毫秒级响应不卡死</p>
-                  <p>• <strong>全格式兼容</strong>：支持常规 Excel，以及 PDF、Word 纯文本提取及字段正则捕捉</p>
-                </Col>
-              </Row>
-            </Card>
           </Col>
 
           {/* ===== 右侧：快捷工具 + 字段提示 ===== */}
           <Col xs={24} lg={8}>
-            <Card 
-              title="⚡ 快捷操作" 
-              variant="borderless" 
-              style={{ marginBottom: 24, borderRadius: 12, boxShadow: '0 4px 16px rgba(0,0,0,0.05)' }}
-              size="small"
-            >
-              <div style={{ padding: 12 }}>
-                <Button 
-                  type="primary" block size="large"
-                  style={{ marginBottom: 12, height: 45, backgroundColor: '#0fc6c2', borderColor: '#0fc6c2' }}
-                  disabled={validData.length === 0}
-                  onClick={() => setStep("preview")}
-                  icon={<EyeOutlined />}
-                >
-                  打开预览数据纠错弹窗
-                </Button>
-                <Button 
-                  block 
-                  icon={<ExportOutlined />}
-                  size="large"
-                  style={{ marginBottom: 12, height: 45 }}
-                  disabled={validData.length === 0}
-                  onClick={exportExcel}
-                >
-                  导出 Excel
-                </Button>
-                <Button 
-                  block 
-                  icon={<ReloadOutlined />}
-                  size="large"
-                  style={{ height: 45 }}
-                  onClick={() => fetchHistory()}
-                >
-                  刷新运单列表
-                </Button>
-              </div>
-            </Card>
+
 
             <Card 
               title="📑 下单字段定义与规范" 
