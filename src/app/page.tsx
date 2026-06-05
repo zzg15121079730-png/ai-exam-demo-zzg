@@ -39,8 +39,8 @@ export default function Home() {
 
   // AI 配置相关
   const [aiConfig, setAiConfig] = useState({
-    apiKey: "",
-    apiBaseUrl: "https://api.deepseek.com/v1",
+    apiKey: "sk-KWEokQJRaKCjsBEWGf2XdHDlDY6oGQiczo23Gue4fa5P7ofR",
+    apiBaseUrl: "https://api.vbcode.io/v1",
     modelName: "deepseek-chat"
   });
 
@@ -64,13 +64,11 @@ export default function Home() {
     const savedApiKey = localStorage.getItem("ai_api_key");
     const savedBaseUrl = localStorage.getItem("ai_base_url");
     const savedModel = localStorage.getItem("ai_model_name");
-    if (savedApiKey || savedBaseUrl || savedModel) {
-      setAiConfig({
-        apiKey: savedApiKey || "",
-        apiBaseUrl: savedBaseUrl || "https://api.deepseek.com/v1",
-        modelName: savedModel || "deepseek-chat"
-      });
-    }
+    setAiConfig({
+      apiKey: savedApiKey !== null ? savedApiKey : "sk-KWEokQJRaKCjsBEWGf2XdHDlDY6oGQiczo23Gue4fa5P7ofR",
+      apiBaseUrl: savedBaseUrl || "https://api.vbcode.io/v1",
+      modelName: savedModel || "deepseek-chat"
+    });
     fetchRules();
     fetchHistory();
   }, []);
