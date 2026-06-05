@@ -84,7 +84,7 @@ export const parseExcelFile = async (file: File): Promise<ParsedExcel> => {
 };
 
 export const standardFields = [
-  { key: "externalCode", label: "外部编码", aliases: ["客户单号", "订单号", "外部订单号", "外部单号", "外部编号", "订单编号", "单号", "配送单号", "配送汇总单号", "配送汇总单号*", "配送单号*"], required: false },
+  { key: "externalCode", label: "外部编码", aliases: ["客户单号", "订单号", "外部订单号", "外部单号", "外部编号", "订单编号", "单号", "配送单号", "配送汇总单号", "配送汇总单号*", "配送单号*", "调拨单号", "调拨单号*", "调拨编号"], required: false },
   { key: "receiverStore", label: "收货门店", aliases: ["收货门店", "收货门店名称", "门店名称", "门店名", "收货门店/机构名称", "调拨门店", "收货机构", "调入门店", "目标门店", "到货门店", "收货方", "收货单位"], required: false },
   { key: "receiverName", label: "收件人姓名", aliases: ["收货人", "收件人", "收货人姓名", "收件人姓名", "收货联系人", "联系人", "收货方联系人", "到货联系人", "提货人"], required: false },
   { key: "receiverPhone", label: "收件人电话", aliases: ["收货电话", "收件电话", "收件人联系方式", "收货人电话", "收件人电话", "联系电话", "收货方电话", "到货电话"], required: false },

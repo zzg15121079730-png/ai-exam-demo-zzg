@@ -121,12 +121,13 @@ function extractFooterInfo(aoa: any[][], startRow: number): Record<string, strin
   const meta: Record<string, string> = {};
   
   // 扩充的正则匹配库
+  const codeKeywords = "调拨单号|订单号|单号|配送单号|外部编码|外部单号|客户单号|配送汇总单号|调拨编号";
   const storeKeywords = "调入门店|调拨门店|收货门店|目标门店|收货店|收货单位|收货机构|收货方|收货店名|收货门店名称|到货门店|分店|调入仓库";
   const nameKeywords = "联系人|收货人|收件人|提货人|到货联系人|收货方联系人|联系人姓名|收货人姓名";
   const phoneKeywords = "联系电话|收货电话|收件电话|收货人电话|电话|手机|联系手机|收货手机|收件人电话";
   const addressKeywords = "收货地址|收件地址|配送地址|到货地址|收货方地址|收件人地址|送货地址|调入地址";
 
-  const allKeywords = [storeKeywords, nameKeywords, phoneKeywords, addressKeywords].join("|");
+  const allKeywords = [codeKeywords, storeKeywords, nameKeywords, phoneKeywords, addressKeywords].join("|");
 
   for (let r = startRow; r < aoa.length; r++) {
     const row = aoa[r] || [];
@@ -143,7 +144,8 @@ function extractFooterInfo(aoa: any[][], startRow: number): Record<string, strin
         
         // 如果提取的值是类似 "▶ 调拨记录" 的指示符或者包含大量特殊符号，不作为最终值
         if (val && !val.startsWith("▶")) {
-          if (new RegExp(storeKeywords, "i").test(key) && !meta.receiverStore) meta.receiverStore = val;
+          if (new RegExp(codeKeywords, "i").test(key) && !meta.externalCode) meta.externalCode = val;
+          else if (new RegExp(storeKeywords, "i").test(key) && !meta.receiverStore) meta.receiverStore = val;
           else if (new RegExp(nameKeywords, "i").test(key) && !meta.receiverName) meta.receiverName = val;
           else if (new RegExp(phoneKeywords, "i").test(key) && !meta.receiverPhone) meta.receiverPhone = val;
           else if (new RegExp(addressKeywords, "i").test(key) && !meta.receiverAddress) meta.receiverAddress = val;
@@ -169,7 +171,8 @@ function extractFooterInfo(aoa: any[][], startRow: number): Record<string, strin
         }
         
         if (foundVal && !foundVal.startsWith("▶")) {
-          if (new RegExp(storeKeywords, "i").test(key) && !meta.receiverStore) meta.receiverStore = foundVal;
+          if (new RegExp(codeKeywords, "i").test(key) && !meta.externalCode) meta.externalCode = foundVal;
+          else if (new RegExp(storeKeywords, "i").test(key) && !meta.receiverStore) meta.receiverStore = foundVal;
           else if (new RegExp(nameKeywords, "i").test(key) && !meta.receiverName) meta.receiverName = foundVal;
           else if (new RegExp(phoneKeywords, "i").test(key) && !meta.receiverPhone) meta.receiverPhone = foundVal;
           else if (new RegExp(addressKeywords, "i").test(key) && !meta.receiverAddress) meta.receiverAddress = foundVal;
@@ -260,7 +263,7 @@ export class RuleEngine {
           });
 
           // 用通用扫描提取出来的高精度信息，进行安全回补与覆盖
-          const fieldsToBackfill: Array<keyof typeof cardMeta> = ["receiverStore", "receiverName", "receiverPhone", "receiverAddress"];
+          const fieldsToBackfill: Array<keyof typeof cardMeta> = ["externalCode", "receiverStore", "receiverName", "receiverPhone", "receiverAddress"];
           fieldsToBackfill.forEach(key => {
             if (scannedMeta[key] && (!cardMeta[key] || cardMeta[key] === "")) {
               cardMeta[key] = scannedMeta[key];

@@ -660,6 +660,41 @@ export default function Home() {
                     { label: "✨ 新建解析规则 (通过大模型 AI 预处理分析)", value: "ai-detect" },
                     ...rulesList.map(r => ({ label: `📋 [已存模板] ${r.templateName || r.fingerprint}`, value: r.id }))
                   ]}
+                  optionRender={(option) => {
+                    // "新建解析规则" 选项不显示删除按钮
+                    if (option.value === "ai-detect") {
+                      return <span>{option.label}</span>;
+                    }
+                    return (
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
+                        <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{option.label}</span>
+                        <DeleteOutlined
+                          style={{ color: '#ff4d4f', fontSize: 14, marginLeft: 8, flexShrink: 0 }}
+                          onClick={(e) => {
+                            e.stopPropagation(); // 阻止选中该项
+                            const rule = rulesList.find(r => r.id === option.value);
+                            if (!rule) return;
+                            Modal.confirm({
+                              title: "确认删除该解析规则？",
+                              content: `规则名称：${rule.templateName || rule.fingerprint}`,
+                              okText: "删除",
+                              okButtonProps: { danger: true },
+                              onOk: async () => {
+                                try {
+                                  await fetch(`/api/mapping?id=${rule.id}`, { method: "DELETE" });
+                                  message.success("规则已删除");
+                                  if (selectedRuleId === rule.id) {
+                                    setSelectedRuleId("ai-detect");
+                                  }
+                                  fetchRules();
+                                } catch { message.error("删除失败"); }
+                              }
+                            });
+                          }}
+                        />
+                      </div>
+                    );
+                  }}
                 />
                 {/* 规则管理操作按钮 */}
                 {selectedRuleId && selectedRuleId !== "ai-detect" && (
