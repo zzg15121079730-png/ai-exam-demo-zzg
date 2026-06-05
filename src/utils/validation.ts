@@ -14,12 +14,15 @@ export interface ValidationError {
 function validateRow(row: any, rowNum: number, reverseMapping: Record<string, string>): ValidationError[] {
   const errors: ValidationError[] = [];
 
-  // 1. 常规必填校验 (比如 SKU物品编码、SKU物品名称、数量、收件人信息、重量、温层等)
+  // 1. 常规必填校验 (比如 SKU物品编码、SKU物品名称、数量等)
   standardFields.forEach((field) => {
     const val = row[field.key];
     const headerName = reverseMapping[field.key] || field.label;
     
-    if (field.required && (val === undefined || val === null || String(val).trim() === "")) {
+    // 收件人三要素在此处特殊排外，稍后在二选一逻辑中处理
+    const isReceiverField = ["receiverName", "receiverPhone", "receiverAddress"].includes(field.key);
+    
+    if (field.required && !isReceiverField && (val === undefined || val === null || String(val).trim() === "")) {
       errors.push({
         row: rowNum,
         field: field.key,
@@ -29,7 +32,78 @@ function validateRow(row: any, rowNum: number, reverseMapping: Record<string, st
     }
   });
 
-  // 2. 格式校验
+  // 2. A/B组二选一校验 (A组: 门店模式 | B组: 收件人模式)
+  const store = String(row.receiverStore || "").trim();
+  const name = String(row.receiverName || "").trim();
+  const phone = String(row.receiverPhone || "").trim();
+  const address = String(row.receiverAddress || "").trim();
+
+  const hasStoreMode = store !== "";
+  const hasReceiverMode = name !== "" && phone !== "" && address !== "";
+
+  if (!hasStoreMode && !hasReceiverMode) {
+    // 两个模式均未满足
+    if (store === "") {
+      errors.push({
+        row: rowNum,
+        field: "receiverStore",
+        fieldLabel: reverseMapping.receiverStore || "收货门店",
+        message: "收货门店与收件人三要素(姓名、电话、地址)二选一必填",
+      });
+    }
+    if (name === "") {
+      errors.push({
+        row: rowNum,
+        field: "receiverName",
+        fieldLabel: reverseMapping.receiverName || "收件人姓名",
+        message: "收件人三要素二选一必填",
+      });
+    }
+    if (phone === "") {
+      errors.push({
+        row: rowNum,
+        field: "receiverPhone",
+        fieldLabel: reverseMapping.receiverPhone || "收件人电话",
+        message: "收件人三要素二选一必填",
+      });
+    }
+    if (address === "") {
+      errors.push({
+        row: rowNum,
+        field: "receiverAddress",
+        fieldLabel: reverseMapping.receiverAddress || "收件人地址",
+        message: "收件人三要素二选一必填",
+      });
+    }
+  } else if (!hasStoreMode && (name !== "" || phone !== "" || address !== "")) {
+    // 属于收件人模式，但未填完整
+    if (name === "") {
+      errors.push({
+        row: rowNum,
+        field: "receiverName",
+        fieldLabel: reverseMapping.receiverName || "收件人姓名",
+        message: "收件人模式下，姓名不能为空",
+      });
+    }
+    if (phone === "") {
+      errors.push({
+        row: rowNum,
+        field: "receiverPhone",
+        fieldLabel: reverseMapping.receiverPhone || "收件人电话",
+        message: "收件人模式下，电话不能为空",
+      });
+    }
+    if (address === "") {
+      errors.push({
+        row: rowNum,
+        field: "receiverAddress",
+        fieldLabel: reverseMapping.receiverAddress || "收件人地址",
+        message: "收件人模式下，地址不能为空",
+      });
+    }
+  }
+
+  // 3. 格式校验
   // 手机号: 1开头11位 | 座机: 区号-号码
   const phoneRegex = /^1[3-9]\d{9}$|^0\d{2,3}-?\d{7,8}$/;
 
