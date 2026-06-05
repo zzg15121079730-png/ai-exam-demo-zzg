@@ -182,12 +182,16 @@ export default function Home() {
           })
         });
 
-        if (!generateRes.ok) {
-          const err = await generateRes.json();
-          throw new Error(err.error || "大模型规则推理失败");
+        let generateData: any;
+        try {
+          generateData = await generateRes.json();
+        } catch {
+          throw new Error("大模型接口返回了无效响应，请检查 API Key 和 Base URL 配置");
         }
 
-        const generateData = await generateRes.json();
+        if (!generateRes.ok && !generateData?.rule) {
+          throw new Error(generateData?.error || "大模型规则推理失败");
+        }
         
         if (generateData.warning) {
           message.warning(generateData.warning, 5);

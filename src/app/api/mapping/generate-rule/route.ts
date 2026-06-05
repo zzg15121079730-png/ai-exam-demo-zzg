@@ -1,18 +1,21 @@
 import { NextResponse } from "next/server";
 
 export async function POST(request: Request) {
+  // 提前声明，确保 catch 块也能访问到这些变量用于降级
+  let fileType = "excel";
+  let fileName = "unknown";
+  let excelSample: any = null;
+  let sampleTextText = "";
+
   try {
     const body = await request.json();
-    const { 
-      fileType, 
-      fileName, 
-      excelSample, 
-      sampleTextText,
-      // 用户自定义配置
-      apiKey,
-      apiBaseUrl,
-      modelName
-    } = body;
+    fileType = body.fileType || fileType;
+    fileName = body.fileName || fileName;
+    excelSample = body.excelSample || excelSample;
+    sampleTextText = body.sampleTextText || body.textSample || sampleTextText;
+
+    // 用户自定义配置
+    const { apiKey, apiBaseUrl, modelName } = body;
 
     // 默认大模型参数
     const PART1 = "sk-KWEokQJRaKCjsBEWGf2";
@@ -143,8 +146,14 @@ ${fileType === "excel" ? JSON.stringify(excelSample, null, 2) : sampleTextText}
 
 请为这个文件结构生成最适配的通用解析规则 JSON。`;
 
-    // 调用大模型
-    const response = await fetch(`${finalBaseUrl}/chat/completions`, {
+    // 调用大模型（8秒超时，防止 Vercel Serverless 超时返回 502）
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 8000);
+
+    // 确保 BaseURL 末尾没有多余斜杠
+    const cleanBaseUrl = finalBaseUrl.replace(/\/+$/, "");
+    
+    const response = await fetch(`${cleanBaseUrl}/chat/completions`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -156,9 +165,13 @@ ${fileType === "excel" ? JSON.stringify(excelSample, null, 2) : sampleTextText}
           { role: "system", content: systemPrompt },
           { role: "user", content: userPrompt }
         ],
-        temperature: 0.1
-      })
+        temperature: 0.1,
+        max_tokens: 4096
+      }),
+      signal: controller.signal
     });
+
+    clearTimeout(timeoutId);
 
     if (!response.ok) {
       const errorText = await response.text();
