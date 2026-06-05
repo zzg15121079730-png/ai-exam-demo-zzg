@@ -351,6 +351,7 @@ export default function Home() {
               setErrors(eData);
               setStep("preview");
               message.success(`解析完成，共解析出 ${vData.length} 条数据`);
+              checkDbDuplicates(vData, eData);
             });
 
           } catch (err: any) {
@@ -394,6 +395,7 @@ export default function Home() {
           setErrors(eData);
           setStep("preview");
           message.success(`解析完成，共解析出 ${vData.length} 条数据`);
+          checkDbDuplicates(vData, eData);
         });
       }
     } catch (err: any) {

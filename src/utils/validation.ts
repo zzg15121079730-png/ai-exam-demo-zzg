@@ -14,7 +14,7 @@ export interface ValidationError {
 function validateRow(row: any, rowNum: number, reverseMapping: Record<string, string>): ValidationError[] {
   const errors: ValidationError[] = [];
 
-  // 1. 常规必填校验 (比如 SKU物品编码、SKU物品名称、SKU发货数量、发件人等)
+  // 1. 常规必填校验 (比如 SKU物品编码、SKU物品名称、数量、收件人信息、重量、温层等)
   standardFields.forEach((field) => {
     const val = row[field.key];
     const headerName = reverseMapping[field.key] || field.label;
@@ -29,10 +29,7 @@ function validateRow(row: any, rowNum: number, reverseMapping: Record<string, st
     }
   });
 
-  // 2. A组门店模式与B组收件人模式二选一校验（根据用户要求已移除，仅依靠 excel 解析出来的 required 必填限制）
-
-  // 3. 格式校验
-  
+  // 2. 格式校验
   // 手机号: 1开头11位 | 座机: 区号-号码
   const phoneRegex = /^1[3-9]\d{9}$|^0\d{2,3}-?\d{7,8}$/;
 
@@ -49,15 +46,42 @@ function validateRow(row: any, rowNum: number, reverseMapping: Record<string, st
     }
   }
 
-  // 件数 / 数量 (正数，考试要求"必须为正数")
+  // 件数 / 数量 (正整数，考试要求"件数正整数")
   if (row.quantity !== undefined && row.quantity !== null && row.quantity !== "") {
     const qty = Number(row.quantity);
-    if (isNaN(qty) || qty <= 0) {
+    if (isNaN(qty) || qty <= 0 || !Number.isInteger(qty)) {
       errors.push({
         row: rowNum,
         field: "quantity",
         fieldLabel: reverseMapping.quantity || "SKU发货数量",
+        message: "必须为正整数",
+      });
+    }
+  }
+
+  // 重量 (正数，考试要求"重量正数")
+  if (row.weight !== undefined && row.weight !== null && row.weight !== "") {
+    const w = Number(row.weight);
+    if (isNaN(w) || w <= 0) {
+      errors.push({
+        row: rowNum,
+        field: "weight",
+        fieldLabel: reverseMapping.weight || "重量",
         message: "必须为正数",
+      });
+    }
+  }
+
+  // 温层 (可选值：常温/冷藏/冷冻)
+  if (row.tempArea !== undefined && row.tempArea !== null && row.tempArea !== "") {
+    const temp = String(row.tempArea).trim();
+    const allowed = ["常温", "冷藏", "冷冻"];
+    if (!allowed.includes(temp)) {
+      errors.push({
+        row: rowNum,
+        field: "tempArea",
+        fieldLabel: reverseMapping.tempArea || "温层",
+        message: "值不在范围内(常温/冷藏/冷冻)",
       });
     }
   }
@@ -104,6 +128,22 @@ export const validateData = (
     const rowErrors = validateRow(mappedRow, rowNum, reverseMapping);
     errors.push(...rowErrors);
 
+    // 外部编码批次内重复性检查
+    if (mappedRow.externalCode) {
+      const codeStr = String(mappedRow.externalCode).trim();
+      if (externalCodes.has(codeStr)) {
+        const prev = externalCodes.get(codeStr)!;
+        errors.push({
+          row: rowNum,
+          field: "externalCode",
+          fieldLabel: reverseMapping.externalCode || "外部编码",
+          message: `与第 ${prev} 行重复`,
+        });
+      } else {
+        externalCodes.set(codeStr, rowNum);
+      }
+    }
+
     // 确保数值类型正确
     if (mappedRow.weight !== undefined && mappedRow.weight !== "") {
       mappedRow.weight = Number(mappedRow.weight);
@@ -141,6 +181,22 @@ export const validateStandardData = (
     // 运行校验
     const rowErrors = validateRow(mappedRow, rowNum, reverseMapping);
     errors.push(...rowErrors);
+
+    // 外部编码批次内重复性检查
+    if (mappedRow.externalCode) {
+      const codeStr = String(mappedRow.externalCode).trim();
+      if (externalCodes.has(codeStr)) {
+        const prev = externalCodes.get(codeStr)!;
+        errors.push({
+          row: rowNum,
+          field: "externalCode",
+          fieldLabel: "外部编码",
+          message: `与第 ${prev} 行重复`,
+        });
+      } else {
+        externalCodes.set(codeStr, rowNum);
+      }
+    }
 
 
     validData.push(mappedRow);
