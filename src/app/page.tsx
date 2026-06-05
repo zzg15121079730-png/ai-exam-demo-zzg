@@ -41,7 +41,7 @@ export default function Home() {
   const [aiConfig, setAiConfig] = useState({
     apiKey: "sk-KWEokQJRaKCjsBEWGf2XdHDlDY6oGQiczo23Gue4fa5P7ofR",
     apiBaseUrl: "https://api.vbcode.io/v1",
-    modelName: "deepseek-chat"
+    modelName: "GPT5.4"
   });
 
   // 数据相关
@@ -584,50 +584,46 @@ export default function Home() {
           </Space>
         </div>
 
-        {/* ===== AI 大模型配置面板 ===== */}
+        {/* ===== AI 大模型配置面板 (直接平铺展示) ===== */}
         <div style={{ marginBottom: 20 }}>
-          <Collapse 
+          <Card 
+            size="small"
             bordered={false} 
-            expandIconPosition="end"
             style={{ backgroundColor: '#fff', borderRadius: 8, boxShadow: '0 2px 8px rgba(0,0,0,0.04)' }}
-            items={[{
-              key: '1',
-              label: (
-                <span style={{ fontWeight: 500, color: '#4e5969' }}>
-                  <RobotOutlined style={{ color: '#0fc6c2', marginRight: 8 }} />
-                  大模型配置 (可选：如不配置，系统将采用高度优化的内置启发式算法分析测试出库单)
-                </span>
-              ),
-              children: (
-                <Form layout="inline" size="middle" style={{ gap: 12 }}>
-                  <Form.Item label="API Key">
-                    <Input.Password 
-                      placeholder="DEEPSEEK_API_KEY" 
-                      value={aiConfig.apiKey} 
-                      onChange={e => saveAiConfig("apiKey", e.target.value)}
-                      style={{ width: 220 }}
-                    />
-                  </Form.Item>
-                  <Form.Item label="Base URL">
-                    <Input 
-                      placeholder="https://api.deepseek.com/v1" 
-                      value={aiConfig.apiBaseUrl} 
-                      onChange={e => saveAiConfig("apiBaseUrl", e.target.value)}
-                      style={{ width: 240 }}
-                    />
-                  </Form.Item>
-                  <Form.Item label="Model Name">
-                    <Input 
-                      placeholder="deepseek-chat" 
-                      value={aiConfig.modelName} 
-                      onChange={e => saveAiConfig("modelName", e.target.value)}
-                      style={{ width: 160 }}
-                    />
-                  </Form.Item>
-                </Form>
-              )
-            }]}
-          />
+            title={
+              <span style={{ fontWeight: 500, color: '#4e5969' }}>
+                <RobotOutlined style={{ color: '#0fc6c2', marginRight: 8 }} />
+                智能大模型接口配置 (当前已默认配置 VBCode.io 考试专用密钥)
+              </span>
+            }
+          >
+            <Form layout="inline" size="middle" style={{ gap: 12 }}>
+              <Form.Item label="API Key">
+                <Input.Password 
+                  placeholder="DEEPSEEK_API_KEY" 
+                  value={aiConfig.apiKey} 
+                  onChange={e => saveAiConfig("apiKey", e.target.value)}
+                  style={{ width: 320 }}
+                />
+              </Form.Item>
+              <Form.Item label="Base URL">
+                <Input 
+                  placeholder="https://api.vbcode.io/v1" 
+                  value={aiConfig.apiBaseUrl} 
+                  onChange={e => saveAiConfig("apiBaseUrl", e.target.value)}
+                  style={{ width: 240 }}
+                />
+              </Form.Item>
+              <Form.Item label="Model Name">
+                <Input 
+                  placeholder="deepseek-chat" 
+                  value={aiConfig.modelName} 
+                  onChange={e => saveAiConfig("modelName", e.target.value)}
+                  style={{ width: 160 }}
+                />
+              </Form.Item>
+            </Form>
+          </Card>
         </div>
 
         <Row gutter={24}>
