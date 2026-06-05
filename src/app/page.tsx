@@ -421,7 +421,7 @@ export default function Home() {
         if (saveRes.ok) {
           const saved = await saveRes.json();
           fetchRules();
-          if (saved.rule?.id) setSelectedRuleId(saved.rule.id);
+          // 不自动切换选中的规则，保持用户当前选择
         }
       }).catch(() => {});
 
